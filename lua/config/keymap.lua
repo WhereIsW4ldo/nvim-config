@@ -39,3 +39,9 @@ keymap.set('n',	'<C-n>',
 	end, 
 	{ desc = '📁 Open file explorer', remap = true }
 ) 
+
+local telescope = require('telescope.builtin')
+
+keymap.set('n', '<C-t>', telescope.find_files, { desc = '🔍 Find files' })
+keymap.set('n', '<C-F>', telescope.live_grep, { desc = '🔍 Grep in files' })
+
