@@ -33,8 +33,7 @@ return {
   {
     "ray-x/lsp_signature.nvim",
     event = "InsertEnter",
-    opts = {
-    }
+    opts = {}
   },
   {
     "smjonas/inc-rename.nvim",
@@ -45,5 +44,17 @@ return {
   },
   {
     "aznhe21/actions-preview.nvim",
+  },
+  {
+    "j-hui/fidget.nvim",
+    opts = {},
+  },
+  {
+    'VidocqH/lsp-lens.nvim',
+    opts = {
+      sections = {
+        git_authors = false
+      }
+    }
   }
 }
