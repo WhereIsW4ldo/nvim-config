@@ -16,11 +16,6 @@ keymap.set("n", "<C-Right>", "<cmd>vertical resize -2<cr>", { desc = "Increase W
 keymap.set("v", "<", "<gv")
 keymap.set("v", ">", ">gv")
 
--- Terminal keymaps
-keymap.set("t", "<leader><Esc>", "<C-\\><C-n>", { noremap = true, silent = true })
--- keymap.set("t", "<C-/>", function()
--- 	require("snacks").terminal()
--- end, { desc = "Togglet Terminal" })
 
 keymap.set("t", "<C-h>", "<C-\\><C-n><C-w>h", { desc = "Exit terminal and go to Left Window", remap = true })
 keymap.set("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "Exit terminal and go to Lower Window", remap = true })
@@ -48,3 +43,6 @@ keymap.set('n', '<C-F>', telescope.live_grep, { desc = '🔍 Grep in files' })
 
 -- git
 keymap.set('n', '<leader>gg', "<cmd>LazyGit<cr>", { desc = 'Git' })
+
+-- terminal
+keymap.set({ "n", "t" }, "<C-_>", "<cmd>ToggleTerm<cr>", { desc = "🖥️ Terminal" })
