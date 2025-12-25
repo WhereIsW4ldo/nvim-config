@@ -8,6 +8,12 @@ return {
   opts = {},
   config = function()
     require("nvim-tree").setup ({
+	    actions = {
+		    change_dir = {
+			    enable = true,
+			    global = true
+		    }
+	    }
     })
   end,
 }
