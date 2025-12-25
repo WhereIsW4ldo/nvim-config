@@ -1,3 +1,5 @@
+require("config.vim")
+
 -- Load all plugins
 require("config.lazy")
 

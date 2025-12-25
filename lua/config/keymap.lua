@@ -40,8 +40,11 @@ keymap.set('n',	'<C-n>',
 	{ desc = '📁 Open file explorer', remap = true }
 ) 
 
+-- search
 local telescope = require('telescope.builtin')
 
 keymap.set('n', '<C-t>', telescope.find_files, { desc = '🔍 Find files' })
 keymap.set('n', '<C-F>', telescope.live_grep, { desc = '🔍 Grep in files' })
 
+-- git
+keymap.set('n', '<leader>gg', "<cmd>LazyGit<cr>", { desc = 'Git' })
