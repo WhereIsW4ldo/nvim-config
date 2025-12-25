@@ -1,4 +1,4 @@
-return { 
+return {
   {
     "mason-org/mason.nvim",
     opts = {}
@@ -35,5 +35,15 @@ return {
     event = "InsertEnter",
     opts = {
     }
+  },
+  {
+    "smjonas/inc-rename.nvim",
+    opts = {}
+  },
+  {
+    "jubnzv/virtual-types.nvim",
+  },
+  {
+    "aznhe21/actions-preview.nvim",
   }
 }

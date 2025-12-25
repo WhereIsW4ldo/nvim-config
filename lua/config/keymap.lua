@@ -25,15 +25,15 @@ keymap.set("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "Exit terminal and go to 
 -- file explorer
 local explorer = require('nvim-tree.api')
 
-keymap.set('n',	'<C-n>', 
-	function () 
+keymap.set('n',	'<C-n>',
+	function ()
 		explorer.tree.toggle({
 			find_file = true,
 			focus = false
-		}) 
-	end, 
+		})
+	end,
 	{ desc = '📁 Open file explorer', remap = true }
-) 
+)
 
 -- search
 local telescope = require('telescope.builtin')
@@ -46,3 +46,9 @@ keymap.set('n', '<leader>gg', "<cmd>LazyGit<cr>", { desc = 'Git' })
 
 -- terminal
 keymap.set({ "n", "t" }, "<C-_>", "<cmd>ToggleTerm<cr>", { desc = "🖥️ Terminal" })
+
+-- LSP
+keymap.set("n", "<C-r>r", function()
+  return ":IncRename " .. vim.fn.expand("<cword>")
+end, { expr = true })
+keymap.set({ "v", "n" }, "<leader>ca", require('actions-preview').code_actions, { desc = "Code action" })
