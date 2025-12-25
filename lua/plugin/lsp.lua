@@ -56,5 +56,10 @@ return {
         git_authors = false
       }
     }
-  }
+  },
+  {
+    "rachartier/tiny-inline-diagnostic.nvim",
+    event = "VeryLazy",
+    opts = {},
+  },
 }
