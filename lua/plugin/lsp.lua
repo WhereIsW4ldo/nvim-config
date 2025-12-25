@@ -31,6 +31,7 @@ return {
         "lua_ls",
         "rust_analyzer",
         "svelte",
+        "terraformls",
         "ts_ls"
       }
     },
