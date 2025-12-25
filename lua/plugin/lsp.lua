@@ -60,6 +60,16 @@ return {
   {
     "rachartier/tiny-inline-diagnostic.nvim",
     event = "VeryLazy",
-    opts = {},
+    opts = {
+    },
+    config = function()
+      require('tiny-inline-diagnostic').setup({
+        options = {
+          multilines = {
+            enabled = true
+          }
+        }
+      })
+    end
   },
 }
