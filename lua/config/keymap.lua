@@ -16,12 +16,6 @@ keymap.set("n", "<C-Right>", "<cmd>vertical resize -2<cr>", { desc = "Increase W
 keymap.set("v", "<", "<gv")
 keymap.set("v", ">", ">gv")
 
-
-keymap.set("t", "<C-h>", "<C-\\><C-n><C-w>h", { desc = "Exit terminal and go to Left Window", remap = true })
-keymap.set("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "Exit terminal and go to Lower Window", remap = true })
-keymap.set("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "Exit terminal and go to Upper Window", remap = true })
-keymap.set("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "Exit terminal and go to Right Window", remap = true })
-
 -- file explorer
 local explorer = require('nvim-tree.api')
 
@@ -46,6 +40,11 @@ keymap.set('n', '<leader>gg', "<cmd>LazyGit<cr>", { desc = 'Git' })
 
 -- terminal
 keymap.set({ "n", "t" }, "<C-_>", "<cmd>ToggleTerm<cr>", { desc = "🖥️ Terminal" })
+keymap.set({ "n", "t" }, "<C-/>", "<cmd>ToggleTerm<cr>", { desc = "🖥️ Terminal" })
+keymap.set("t", "<C-h>", "<C-\\><C-n><C-w>h", { desc = "Exit terminal and go to Left Window", remap = true })
+keymap.set("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "Exit terminal and go to Lower Window", remap = true })
+keymap.set("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "Exit terminal and go to Upper Window", remap = true })
+keymap.set("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "Exit terminal and go to Right Window", remap = true })
 
 -- LSP
 keymap.set("n", "<C-r>r", function()
