@@ -54,3 +54,40 @@ keymap.set({ "v", "n" }, "<leader>ca", require('actions-preview').code_actions, 
 keymap.set("n", "<leader>fr", telescope.lsp_references, { desc = 'LSP References' })
 keymap.set("n", "<leader>fi", telescope.lsp_implementations, { desc = 'LSP Implementations' })
 keymap.set("n", "<leader>fd", telescope.lsp_type_definitions, { desc = 'LSP Type Definitions' })
+
+-- Debugger
+local dap = require "dap"
+dap.set_log_level "TRACE"
+local dapui = require "dapui"
+
+vim.keymap.set("n", "<F5>", dap.continue, {})
+
+vim.keymap.set("n", "q", function()
+dap.close()
+end, {})
+
+dap.listeners.after.event_stopped["dap_ui"] = function()
+dapui.open()
+end
+
+dap.listeners.on_session["dap_ui"] = function(_, new)
+if new == nil then
+  dapui.close()
+end
+end
+
+vim.keymap.set("n", "<F10>", dap.step_over, {})
+vim.keymap.set("n", "<leader>dO", dap.step_over, {})
+vim.keymap.set("n", "<leader>dC", dap.run_to_cursor, {})
+vim.keymap.set("n", "<leader>dr", dap.repl.toggle, {})
+vim.keymap.set("n", "<leader>dj", dap.down, {})
+vim.keymap.set("n", "<leader>dk", dap.up, {})
+vim.keymap.set("n", "<F11>", dap.step_into, {})
+vim.keymap.set("n", "<F12>", dap.step_out, {})
+vim.keymap.set("n", "<leader>b", dap.toggle_breakpoint, {})
+vim.keymap.set("n", "<F2>", require("dap.ui.widgets").hover, {})
+
+-- require("dap-config.lua").register_lua_dap()
+
+vim.fn.sign_define("DapBreakpoint", { text = "🔴", texthl = "", linehl = "DapBreakpoint", numhl = "" })
+vim.fn.sign_define("DapStopped", { text = "󰳟", texthl = "", linehl = "DapStopped", numhl = "" })
