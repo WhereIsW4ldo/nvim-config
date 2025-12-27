@@ -7,7 +7,7 @@ quote_style = double
 
 continuation_indent = 4
 
-max_line_length = 80 
+max_line_length = 120
 
 trailing_table_separator = always
 
@@ -23,7 +23,7 @@ space_around_table_field_list = true
 space_before_attribute = true
 space_before_function_open_parenthesis = false
 space_before_function_call_open_parenthesis = false
-space_before_closure_open_parenthesis = true
+space_before_closure_open_parenthesis = false
 space_before_function_call_single_arg = true
 space_before_open_square_bracket = false
 space_inside_function_call_parentheses = false
@@ -72,7 +72,7 @@ line_space_after_comment = keep
 
 # [line break]
 break_all_list_when_line_exceed = true
-auto_collapse_lines = true 
+auto_collapse_lines = false
 
 # [preference]
 ignore_space_after_colon = true
