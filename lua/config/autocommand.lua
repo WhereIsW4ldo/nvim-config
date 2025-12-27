@@ -1,7 +1,8 @@
 local api = vim.api
 
+-- Quit fileExplorer if last
 api.nvim_create_autocmd("QuitPre", {
-  callback = function()
+  callback = function ()
     local tree_wins = {}
     local floating_wins = {}
     local wins = vim.api.nvim_list_wins()
@@ -10,7 +11,7 @@ api.nvim_create_autocmd("QuitPre", {
       if bufname:match("NvimTree_") ~= nil then
         table.insert(tree_wins, w)
       end
-      if vim.api.nvim_win_get_config(w).relative ~= '' then
+      if vim.api.nvim_win_get_config(w).relative ~= "" then
         table.insert(floating_wins, w)
       end
     end
@@ -20,5 +21,13 @@ api.nvim_create_autocmd("QuitPre", {
         vim.api.nvim_win_close(w, true)
       end
     end
-  end
+  end,
+})
+
+-- Format on save
+api.nvim_create_autocmd("BufWritePre", {
+  pattern = "*",
+  callback = function ()
+    vim.lsp.buf.format({ async = false, })
+  end,
 })
