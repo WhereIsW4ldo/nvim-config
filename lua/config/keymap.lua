@@ -1,5 +1,12 @@
 local keymap = vim.keymap
 
+-- temp
+keymap.set("n", "<leader>s", "<cmd>so %<CR>", { desc = "Execute current .lua file", })
+keymap.set("n", "<C-e>", function()
+		return ":Inspect"
+	end,{ noremap = true, silent = false, }
+)
+
 -- navigation
 keymap.set("n", "<C-h>", "<C-w>h", { desc = "Go to Left Window", remap = true, })
 keymap.set("n", "<C-j>", "<C-w>j", { desc = "Go to Lower Window", remap = true, })
