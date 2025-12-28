@@ -76,6 +76,21 @@ return {
 		opts = {
 			sections = {
 				git_authors = false,
+				definition = function(count)
+					if count > 1 then
+						return "Definitions: " .. count
+					end
+				end,
+				implements = function(count)
+					if count > 1 then
+						return "Implements: " .. count
+					end
+				end,
+				references = function(count)
+					if count > 0 then
+						return "References: " .. count
+					end
+				end,
 			},
 		},
 	},
