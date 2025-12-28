@@ -3,8 +3,8 @@ local keymap = vim.keymap
 -- temp
 keymap.set("n", "<leader>s", "<cmd>so %<CR>", { desc = "Execute current .lua file", })
 keymap.set("n", "<C-e>", function()
-		return ":Inspect"
-	end,{ noremap = true, silent = false, }
+	return ":Inspect"
+end, { noremap = true, silent = false, }
 )
 
 -- navigation
@@ -94,7 +94,8 @@ vim.keymap.set("n", "<F12>", dap.step_out, {})
 vim.keymap.set("n", "<leader>b", dap.toggle_breakpoint, {})
 vim.keymap.set("n", "<F2>", require("dap.ui.widgets").hover, {})
 
--- require("dap-config.lua").register_lua_dap()
+vim.cmd("hi DapBreakpointColor guibg=#442723")
+vim.cmd("hi DapStoppedColor guibg=#684C1C")
 
-vim.fn.sign_define("DapBreakpoint", { text = "🔴", texthl = "", linehl = "DapBreakpoint", numhl = "", })
-vim.fn.sign_define("DapStopped", { text = "󰳟", texthl = "", linehl = "DapStopped", numhl = "", })
+vim.fn.sign_define("DapBreakpoint", { text = "🔴", texthl = "", linehl = "DapBreakpointColor", numhl = "", })
+vim.fn.sign_define("DapStopped", { text = "", texthl = "", linehl = "DapStoppedColor", numhl = "", })
