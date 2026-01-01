@@ -67,11 +67,17 @@ local dap = require("dap")
 dap.set_log_level("TRACE")
 local dapui = require("dapui")
 
-vim.keymap.set("n", "<F5>", dap.continue, {})
+dap.configurations.lua = {
+	{
+		type = "nlua",
+		request = "attach",
+		name = "Attach to running Neovim instance",
+	},
+}
 
-vim.keymap.set("n", "q", function()
-	dap.close()
-end, {})
+dap.adapters.nlua = function(callback, config)
+	callback({ type = "server", host = config.host or "127.0.0.1", port = config.port or 8086, })
+end
 
 dap.listeners.after.event_stopped["dap_ui"] = function()
 	dapui.open()
@@ -83,6 +89,15 @@ dap.listeners.on_session["dap_ui"] = function(_, new)
 	end
 end
 
+vim.keymap.set("n", "<F5>", dap.continue, {})
+
+vim.keymap.set("n", "<leader>dl", function()
+	require("osv").launch({ port = 8086, })
+end, { desc = "Debugger launch (OSV)", })
+
+vim.keymap.set("n", "<leader>dq", function()
+	dap.close()
+end, {})
 vim.keymap.set("n", "<F10>", dap.step_over, {})
 vim.keymap.set("n", "<leader>dO", dap.step_over, {})
 vim.keymap.set("n", "<leader>dC", dap.run_to_cursor, {})
