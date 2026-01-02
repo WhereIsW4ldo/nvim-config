@@ -10,8 +10,14 @@ return {
 			defaults = {
 				path_display = { shorten = 3, },
 				prompt_prefix = "> ",
+				theme = "dropdown",
 			},
 			extensions_list = { "fzf", "terms", "themes", },
 		},
+		config = function()
+			require("telescope").setup({
+				defaults = require("telescope.themes").get_dropdown(),
+			})
+		end,
 	},
 }
