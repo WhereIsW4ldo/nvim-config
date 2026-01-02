@@ -20,7 +20,6 @@ return {
 		opts = {
 			ensure_installed = {
 				"arduino_language_server",
-				"azure_pipelines_ls",
 				"bashls",
 				"cssls",
 				"docker_compose_language_service",
