@@ -2,16 +2,15 @@ local keymap = vim.keymap
 
 -- temp
 keymap.set("n", "<leader>s", "<cmd>so %<CR>", { desc = "Execute current .lua file", })
-keymap.set("n", "<C-e>", function()
-	return ":Inspect"
-end, { noremap = true, silent = false, }
-)
 
 -- navigation
 keymap.set("n", "<C-h>", "<C-w>h", { desc = "Go to Left Window", remap = true, })
 keymap.set("n", "<C-j>", "<C-w>j", { desc = "Go to Lower Window", remap = true, })
 keymap.set("n", "<C-k>", "<C-w>k", { desc = "Go to Upper Window", remap = true, })
 keymap.set("n", "<C-l>", "<C-w>l", { desc = "Go to Right Window", remap = true, })
+
+-- file
+keymap.set("n", "<leader>o", "<CMD>Oil<CR>", { desc = "Open parent directory ", })
 
 -- window size adjustments
 keymap.set("n", "<C-Up>", "<cmd>resize -2<cr>", { desc = "Increase Window Height", })
@@ -22,19 +21,6 @@ keymap.set("n", "<C-Right>", "<cmd>vertical resize -2<cr>", { desc = "Increase W
 -- Keep visual indenting selected after indenting
 keymap.set("v", "<", "<gv")
 keymap.set("v", ">", ">gv")
-
--- file explorer
-local explorer = require("nvim-tree.api")
-
-keymap.set("n", "<C-n>",
-	function()
-		explorer.tree.toggle({
-			find_file = true,
-			focus = false,
-		})
-	end,
-	{ desc = "📁 Open file explorer", remap = true, }
-)
 
 -- search
 local telescope = require("telescope.builtin")
@@ -61,6 +47,14 @@ keymap.set({ "v", "n", }, "<leader>ca", require("actions-preview").code_actions,
 keymap.set("n", "<leader>fr", telescope.lsp_references, { desc = "LSP References", })
 keymap.set("n", "<leader>fi", telescope.lsp_implementations, { desc = "LSP Implementations", })
 keymap.set("n", "<leader>fd", telescope.lsp_type_definitions, { desc = "LSP Type Definitions", })
+keymap.set("n", "<leader>m", require("treesj").toggle, { desc = "(Un)fold list", })
+
+-- Code editor
+keymap.set({ "n", "x", "o", }, "s", function() require("flash").jump() end, { desc = "📸 Flash", })
+keymap.set({ "n", "x", "o", }, "S", function() require("flash").treesitter() end, { desc = "📸 Flash Treesitter", })
+keymap.set("o", "r", function() require("flash").remote() end, { desc = "📸 Remote Flash", })
+keymap.set({ "o", "x", }, "R", function() require("flash").treesitter_search() end, { desc = "📸 Treesitter Search", })
+keymap.set({ "c", }, "<C-s>", function() require("flash").toggle() end, { desc = "📸 Toggle Flash Search", })
 
 -- Debugger
 local dap = require("dap")
