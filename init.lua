@@ -7,4 +7,7 @@ require("config.lazy")
 require("config.keymap")
 
 -- Setup autocommands
-require('config.autocommand')
+require("config.autocommand")
+
+-- Setup Lsp config
+require("config.lsp")

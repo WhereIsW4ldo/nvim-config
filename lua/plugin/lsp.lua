@@ -33,20 +33,8 @@ return {
 				"terraformls",
 				"ts_ls",
 			},
+			automatic_enable = true,
 		},
-		config = function()
-			vim.lsp.config("lua_ls", {
-				settings = {
-					Lua = {
-						workspace = {
-							library = vim.api.nvim_get_runtime_file("", true),
-						},
-					},
-				},
-			})
-
-			vim.lsp.enable({ "lua_ls", })
-		end,
 	},
 	{
 		"kosayoda/nvim-lightbulb",
