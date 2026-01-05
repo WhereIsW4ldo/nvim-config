@@ -51,7 +51,7 @@ return {
 	},
 	{
 		"WhereIsW4ldo/rider-dark-theme.nvim",
-		dir = "~/Development/nvim/rider_dark_theme",
+		-- dir = "~/Development/nvim/rider_dark_theme",
 		lazy = false,
 		opts = {},
 	},
