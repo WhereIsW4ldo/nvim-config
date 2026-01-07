@@ -1,6 +1,5 @@
 return {
 	{
-
 		"Wansmer/treesj",
 		dependencies = {
 			"nvim-treesitter/nvim-treesitter",
@@ -22,18 +21,18 @@ return {
 				default_shift_tab = "<C-d>", -- reverse shift default action,
 				enable_backwards = true, -- well ...
 				tabouts = {
-					{ open = "'", close = "'", },
-					{ open = '"', close = '"', },
-					{ open = "`", close = "`", },
-					{ open = "(", close = ")", },
-					{ open = "[", close = "]", },
-					{ open = "{", close = "}", },
+					{ open = "'", close = "'" },
+					{ open = '"', close = '"' },
+					{ open = "`", close = "`" },
+					{ open = "(", close = ")" },
+					{ open = "[", close = "]" },
+					{ open = "{", close = "}" },
 				},
 				ignore_beginning = true, --[[ if the cursor is at the beginning of a filled element it will rather tab out than shift the content ]]
 				exclude = {}, -- tabout will ignore these filetypes
 			})
 		end,
-		dependencies = { "nvim-treesitter/nvim-treesitter", },
+		dependencies = { "nvim-treesitter/nvim-treesitter" },
 		event = "InsertCharPre",
 		priority = 1000,
 	},
@@ -54,5 +53,11 @@ return {
 		event = "InsertEnter",
 		config = true,
 		opts = {},
+	},
+	{
+		"dstein64/nvim-scrollview",
+		config = function()
+			require("scrollview").setup()
+		end,
 	},
 }

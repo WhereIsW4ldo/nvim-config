@@ -32,6 +32,7 @@ return {
 				"svelte",
 				"terraformls",
 				"ts_ls",
+				"powershell_es",
 			},
 			automatic_enable = true,
 		},
@@ -84,8 +85,7 @@ return {
 	{
 		"rachartier/tiny-inline-diagnostic.nvim",
 		event = "VeryLazy",
-		opts = {
-		},
+		opts = {},
 		config = function()
 			require("tiny-inline-diagnostic").setup({
 				options = {
@@ -95,5 +95,12 @@ return {
 				},
 			})
 		end,
+	},
+	{
+		"TheLeoP/powershell.nvim",
+		---@type powershell.user_config
+		opts = {
+			bundle_path = vim.fn.stdpath("data") .. "/mason/packages/powershell-editor-services",
+		},
 	},
 }

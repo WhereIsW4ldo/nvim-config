@@ -4,6 +4,6 @@
 - [x] LSP integration
 - [x] Completion
 - [x] Snippets
-- [ ] Project management
+- [x] Project management
 
 Link with good plugins: [plugins](https://github.com/rockerBOO/awesome-neovim?tab=readme-ov-file) 
