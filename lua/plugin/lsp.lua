@@ -20,7 +20,6 @@ return {
 		opts = {
 			ensure_installed = {
 				"arduino_language_server",
-				"azure_pipelines_ls",
 				"bashls",
 				"cssls",
 				"docker_compose_language_service",
@@ -33,7 +32,9 @@ return {
 				"svelte",
 				"terraformls",
 				"ts_ls",
+				"powershell_es",
 			},
+			automatic_enable = true,
 		},
 		config = function()
 			vim.lsp.config("lua_ls", {
@@ -113,8 +114,7 @@ return {
 	{
 		"rachartier/tiny-inline-diagnostic.nvim",
 		event = "VeryLazy",
-		opts = {
-		},
+		opts = {},
 		config = function()
 			require("tiny-inline-diagnostic").setup({
 				options = {

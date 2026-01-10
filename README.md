@@ -3,7 +3,7 @@
 ## Todo's
 - [x] LSP integration
 - [x] Completion
-- [ ] Snippets
-- [ ] Project management
+- [x] Snippets
+- [x] Project management
 
 Link with good plugins: [plugins](https://github.com/rockerBOO/awesome-neovim?tab=readme-ov-file) 
