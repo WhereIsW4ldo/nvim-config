@@ -9,7 +9,6 @@ return {
 		---@module 'avante'
 		---@type avante.Config
 		opts = {
-			provider = "copilot",
 		},
 		dependencies = {
 			"nvim-lua/plenary.nvim",
@@ -25,10 +24,4 @@ return {
 			},
 		},
 	},
-	{
-		"zbirenbaum/copilot.lua",
-		config = function()
-			require("copilot").setup({})
-		end,
-	}, -- for providers='copilot'
 }
