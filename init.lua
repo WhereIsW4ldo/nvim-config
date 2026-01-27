@@ -8,6 +8,3 @@ require("config.keymap")
 
 -- Setup autocommands
 require("config.autocommand")
-
--- Setup Lsp config
-require("config.lsp")
