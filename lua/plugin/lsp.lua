@@ -62,8 +62,7 @@ return {
 				},
 			})
 
-			vim.lsp.enable({ "lua_ls", })
-			vim.lsp.enable({ "roslyn", })
+			vim.lsp.enable({ "lua_ls", "roslyn", "terraformls", "ts_ls", "eslint", })
 		end,
 	},
 	{
