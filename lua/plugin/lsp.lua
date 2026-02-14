@@ -31,10 +31,13 @@ return {
 				"rust_analyzer",
 				"svelte",
 				"terraformls",
+				"tailwinscss",
 				"ts_ls",
 				"powershell_es",
+				"vue-language-server",
 			},
 			automatic_enable = true,
+			automatic_installation = true,
 		},
 		config = function()
 			vim.lsp.config("lua_ls", {
@@ -62,7 +65,7 @@ return {
 				},
 			})
 
-			vim.lsp.enable({ "lua_ls", "roslyn", "terraformls", "ts_ls", "eslint", })
+			require("mason-lspconfig").setup()
 		end,
 	},
 	{
