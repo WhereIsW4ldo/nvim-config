@@ -27,16 +27,7 @@ return {
 			completion = { documentation = { auto_show = true, }, },
 
 			sources = {
-				default = { "lsp", "easy-dotnet", "path", "snippets", "buffer", },
-				providers = {
-					["easy-dotnet"] = {
-						name = "easy-dotnet",
-						enabled = true,
-						module = "easy-dotnet.completion.blink",
-						score_offset = 10000,
-						async = true,
-					},
-				},
+				default = { "lsp", "path", "snippets", "buffer", },
 			},
 
 			fuzzy = { implementation = "prefer_rust_with_warning", },
