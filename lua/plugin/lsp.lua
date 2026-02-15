@@ -31,15 +31,15 @@ return {
 				"rust_analyzer",
 				"svelte",
 				"terraformls",
-				"tailwinscss",
-				"ts_ls",
+				"tailwindcss",
+				"vtsls",
 				"powershell_es",
-				"vue-language-server",
+				"vue_ls",
 			},
 			automatic_enable = true,
 			automatic_installation = true,
 		},
-		config = function()
+		config = function(_, opts)
 			vim.lsp.config("lua_ls", {
 				settings = {
 					Lua = {
@@ -65,7 +65,33 @@ return {
 				},
 			})
 
-			require("mason-lspconfig").setup()
+			vim.lsp.config("vtsls", {
+				filetypes = {
+					"typescript",
+					"javascript",
+					"javascriptreact",
+					"typescriptreact",
+					"vue",
+				},
+				settings = {
+					vtsls = {
+						tsserver = {
+							globalPlugins = {
+								{
+									name = "@vue/typescript-plugin",
+									location = vim.fn.stdpath("data")
+										.. "/mason/packages/vue-language-server/node_modules/@vue/typescript-plugin",
+									languages = { "vue" },
+									configNamespace = "typescript",
+									enableForWorkspaceTypeScriptVersions = true,
+								},
+							},
+						},
+					},
+				},
+			})
+
+			require("mason-lspconfig").setup(opts)
 		end,
 	},
 	{

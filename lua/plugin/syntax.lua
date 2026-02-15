@@ -13,6 +13,9 @@ return {
 					enable = true,
 				},
 			})
+
+			-- Ensure Vue-related parsers are installed
+			treesitter.install({ "vue", "typescript", "javascript", "html", "css" })
 		end,
 	},
 	{
