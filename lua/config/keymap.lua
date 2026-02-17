@@ -39,6 +39,11 @@ keymap.set("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "Exit terminal and go to 
 keymap.set("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "Exit terminal and go to Upper Window", remap = true, })
 keymap.set("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "Exit terminal and go to Right Window", remap = true, })
 
+-- tabs
+keymap.set("n", "<A-,>", "<Cmd>BufferPrevious<CR>", { desc = "Previous buffer", })
+keymap.set("n", "<A-.>", "<Cmd>BufferNext<CR>", { desc = "Next Buffer", })
+keymap.set("n", "<A-c>", "<Cmd>BufferClose<CR>", { desc = "Close Buffer", })
+
 -- LSP
 keymap.set("n", "<C-r>r", function()
 	return ":IncRename " .. vim.fn.expand("<cword>")
