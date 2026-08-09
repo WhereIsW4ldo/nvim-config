@@ -15,6 +15,8 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
 | tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential` |
+| .NET SDK **10+** | The C# server (`roslyn_ls`) — see below | `dotnet --version` |
+| A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
 | `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers | Present on any base Linux except sometimes `unzip` |
 
 ## External dependencies
@@ -35,6 +37,34 @@ server. Use `:checkhealth mason` for that, and `:Mason` (then `U`) to update the
 Unlike the rest of this config, server versions are **not pinned**: mason has no
 lockfile, so a fresh machine gets whatever is current. That is a deliberate trade for
 not maintaining a server list in two places.
+
+#### Which server, and why
+
+| Language | Server | Chosen over |
+|---|---|---|
+| Terraform | `terraformls` | HashiCorp's own. `terraform_lsp` is the community alternative and is unmaintained. |
+| C# | `roslyn_ls` | `omnisharp` (the Mono-era predecessor) and `csharp_ls` (community, lighter, less complete). This is the engine behind the VS Code C# extension. |
+| Markdown | `marksman` | — |
+| Vue + TypeScript | `vue_ls` + `vtsls` | `ts_ls`. Since Vue language server v3 there is no takeover mode, and both upstreams point at `vtsls`; lspconfig warns against enabling `ts_ls` alongside it. |
+| Docker | `docker_language_server` | `dockerls` + `docker_compose_language_service`, which take two servers to cover the same ground. Docker's own binary also handles Bake. |
+| SQL | `sqls` | `sqlls`, which is simply broken: sql-language-server 1.7.1 reaches into a `vscode-languageserver-protocol` subpath that modern Node blocks via `exports`, so it exits 1 on startup. |
+| Rust | `rust_analyzer` | — |
+
+Two of them need a toolchain `install.sh` now installs: **`dotnet`**, because
+`roslyn_ls` is distributed as a NuGet package that mason installs by spawning `dotnet`,
+and the server is a `net10.0` assembly; and **`cargo`**, because `rust_analyzer` shells
+out to `cargo metadata` and knows nothing about a project without it.
+
+Three gaps worth knowing about:
+
+- **`sqls` says `no database connection` until you give it one.** It still parses, formats
+  and completes keywords; table and column completion needs a connection in a `config.yml`.
+- **Razor / `.cshtml` is not supported.** `roslyn_ls` reports the request and points at
+  [roslyn.nvim](https://github.com/seblyng/roslyn.nvim), which is what you would add for it.
+- **Compose files need a filetype Neovim does not detect.** `docker_language_server`
+  attaches on `yaml.docker-compose`, so `lua/plugin/docker.lua` registers the patterns.
+  A Compose file under a name neither `compose*.yaml` nor `docker-compose*.yaml` matches
+  will open as plain `yaml` and get no server.
 
 ### `claude-agent-acp` — required by `lua/plugin/ai.lua`
 

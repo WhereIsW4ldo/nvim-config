@@ -43,8 +43,21 @@ return {
 			-- package `lua-language-server`.
 			--
 			-- Adding a language means editing this list and the `languages` list in
-			-- `lua/plugin/treesitter.lua`.
-			ensure_installed = { "lua_ls", },
+			-- `lua/plugin/treesitter.lua`. Why each of these won over its alternatives is
+			-- in README.md under "Language servers"; a server needing more than a name
+			-- here gets a `lua/plugin/<language>.lua` of its own, as `typescript.lua`
+			-- and `docker.lua` do.
+			ensure_installed = {
+				"lua_ls",
+				"terraformls",
+				"roslyn_ls",     -- needs `dotnet`: mason installs it from NuGet
+				"marksman",
+				"vtsls",         -- also serves the TypeScript half of a Vue SFC
+				"vue_ls",
+				"docker_language_server",
+				"sqls",
+				"rust_analyzer", -- needs `cargo` on PATH to load a workspace
+			},
 
 			-- Already the default. Stated because it is the reason no server is
 			-- configured by hand anywhere in this config: mason-lspconfig calls

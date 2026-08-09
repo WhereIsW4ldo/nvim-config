@@ -42,6 +42,17 @@ BREW_DEPS=(
 	# `gcc-13` rather than `cc`, so the brew path here is nominal. Listed anyway so
 	# --check reports it on a fresh machine, which is this script's job.
 	"cc|-|gcc|"
+	# The .NET SDK, for the C# server (`roslyn_ls`). Two reasons, both hard requirements:
+	# its mason package is a NuGet package, which mason installs by spawning `dotnet`, and
+	# Microsoft.CodeAnalysis.LanguageServer 5.8 is a `net10.0` assembly needing the
+	# matching runtime. `dotnet --version` reports the SDK, which implies the runtime.
+	"dotnet|10.0.0|dotnet|dotnet --version"
+	# A Rust toolchain, for `rust_analyzer`. mason ships the server as a prebuilt binary,
+	# but the server itself shells out to `cargo metadata` to load a workspace -- without
+	# it you get a client that attaches and then knows nothing. Presence-only: any cargo
+	# new enough to build the project is new enough here. `rustup` is the better install
+	# than brew's `rust` if you want per-project toolchains; either satisfies this.
+	"cargo|-|rust|"
 	# mason shells out to these four to download and unpack language servers.
 	"curl|-|curl|"
 	"unzip|-|unzip|"
