@@ -25,6 +25,10 @@ BREW_DEPS=(
 	"nvim|0.12.0|neovim|nvim --version | head -1 | sed 's/^NVIM v//'"
 	"git|2.19.0|git|git --version | awk '{print \$3}'"
 	"node|22.0.0|node|node --version | sed 's/^v//'"
+	# 0.40.0 is where lazygit gained the Worktrees panel.
+	# Its --version line ends with `git version=X`, so split on commas and anchor the
+	# field -- a plain `.*version=` is greedy and picks up the git version instead.
+	"lazygit|0.40.0|lazygit|lazygit --version | tr ',' '\\n' | sed -n 's/^ *version=\\([0-9.]*\\)\$/\\1/p'"
 )
 
 # Format: command|npm package spec

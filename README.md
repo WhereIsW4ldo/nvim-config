@@ -12,6 +12,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | Neovim **0.12+** | Config targets modern APIs (`vim.lsp.config`, `vim.hl`, built-in EditorConfig) | `nvim --version` |
 | Git **2.19+** | lazy.nvim uses partial clones (`--filter=blob:none`) | |
 | Node **22+** | Needed by the ACP provider below | |
+| lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
 
 ## External dependencies
 
