@@ -10,7 +10,22 @@
 -- Auth reuses the existing `claude /login` session; no API key is needed. See README.md
 -- for version pinning and why upstream's pnpm / prebuilt-binary advice does not apply.
 return {
-	"carlos-algms/agentic.nvim",
+	-- TEMPORARY FORK, not upstream. On every commit from `10f9bab` (2026-08-01)
+	-- onward, restoring a session leaves it with no modes and no models:
+	-- `_bootstrap_session` early-returns while `_is_restoring_session` is set, so the
+	-- `session/new` whose response is the only source of that data is never sent.
+	-- Switching mode then reports "This provider does not support mode switching",
+	-- the header shows no mode, and the model picker is empty. Upstream has regressed
+	-- this three times (issues #180, #277, and #310).
+	--
+	-- This branch is upstream `main` plus the one-line fix -- so unlike pinning to a
+	-- pre-regression commit, #297's background sessions are kept. Revert this block
+	-- to `"carlos-algms/agentic.nvim"` once PR #311 lands.
+	--   issue: https://github.com/carlos-algms/agentic.nvim/issues/310
+	--   PR:    https://github.com/carlos-algms/agentic.nvim/pull/311
+	-- Background and the full trace: `docs/agentic-restore-modes.md`.
+	"WhereIsW4ldo/agentic.nvim",
+	branch = "fix/restore-config-options",
 
 	--- @type agentic.PartialUserConfig
 	opts = {
