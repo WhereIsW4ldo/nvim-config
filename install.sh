@@ -21,6 +21,9 @@ set -euo pipefail
 
 # ── Dependency tables ────────────────────────────────────────────────────────────
 # Format: command|minimum version|brew formula|shell snippet printing the version
+# A minimum of `-` means presence-only: no version probe, leave the probe field empty.
+# Do NOT add a fifth field -- `read` gives the last variable everything remaining,
+# including `|`, which is what lets the probes below contain pipes.
 BREW_DEPS=(
 	"nvim|0.12.0|neovim|nvim --version | head -1 | sed 's/^NVIM v//'"
 	"git|2.19.0|git|git --version | awk '{print \$3}'"
@@ -29,6 +32,22 @@ BREW_DEPS=(
 	# Its --version line ends with `git version=X`, so split on commas and anchor the
 	# field -- a plain `.*version=` is greedy and picks up the git version instead.
 	"lazygit|0.40.0|lazygit|lazygit --version | tr ',' '\\n' | sed -n 's/^ *version=\\([0-9.]*\\)\$/\\1/p'"
+	# nvim-treesitter compiles parsers locally with the tree-sitter CLI. Upstream is
+	# explicit that it must come from a package manager and NOT npm.
+	# `--version` prints `tree-sitter 0.26.3`, hence field 2.
+	"tree-sitter|0.26.1|tree-sitter|tree-sitter --version | awk '{print \$2}'"
+	# A C compiler for those parsers. Presence-only: on Linux `cc` comes from the distro's
+	# build tools (Debian/Ubuntu: build-essential), and `brew install gcc` provides
+	# `gcc-13` rather than `cc`, so the brew path here is nominal. Listed anyway so
+	# --check reports it on a fresh machine, which is this script's job.
+	"cc|-|gcc|"
+	# mason shells out to these four to download and unpack language servers.
+	"curl|-|curl|"
+	"unzip|-|unzip|"
+	# On Linux `tar` is already GNU tar. brew's `gnu-tar` installs `gtar`, not `tar`, so
+	# as with `cc` the formula is nominal and the value is in --check reporting it.
+	"tar|-|gnu-tar|"
+	"gzip|-|gzip|"
 )
 
 # Format: command|npm package spec
@@ -149,6 +168,13 @@ for entry in "${BREW_DEPS[@]}"; do
 	IFS='|' read -r cmd min formula probe <<<"$entry"
 
 	if have "$cmd"; then
+		# A `-` minimum means presence is all that matters -- tools with no meaningful
+		# version floor, where probing would report the useless `✓ unzip 0 (>= 0)`.
+		if [ "$min" = "-" ]; then
+			ok "$cmd present ($(command -v "$cmd"))"
+			continue
+		fi
+
 		current="$(eval "$probe" 2>/dev/null || echo "0")"
 		if version_ge "$current" "$min"; then
 			ok "$cmd $current (>= $min)"
@@ -167,6 +193,12 @@ for entry in "${BREW_DEPS[@]}"; do
 
 	have brew || die "Homebrew is required to install $cmd"
 	brew install "$formula"
+
+	if [ "$min" = "-" ]; then
+		have "$cmd" || die "$cmd still not on PATH after installing $formula"
+		ok "$cmd installed"
+		continue
+	fi
 
 	current="$(eval "$probe" 2>/dev/null || echo "0")"
 	version_ge "$current" "$min" \

@@ -13,6 +13,9 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | Git **2.19+** | lazy.nvim uses partial clones (`--filter=blob:none`) | |
 | Node **22+** | Needed by the ACP provider below | |
 | lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
+| tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
+| A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential` |
+| `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers | Present on any base Linux except sometimes `unzip` |
 
 ## External dependencies
 
