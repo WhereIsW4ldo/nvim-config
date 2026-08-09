@@ -15,6 +15,7 @@
 # │ ADDING A DEPENDENCY: append to BREW_DEPS or NPM_DEPS below. That is the only  │
 # │ place to edit -- everything else is driven from those two tables. Also record  │
 # │ it in README.md under "External dependencies".                                │
+# │ Exception: language servers live in mason, not install.sh -- see CLAUDE.md. │
 # └──────────────────────────────────────────────────────────────────────────────┘
 
 set -euo pipefail
