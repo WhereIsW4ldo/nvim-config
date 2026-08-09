@@ -32,6 +32,17 @@ opt.smartcase = true
 
 opt.scrolloff = 8
 
+-- Folding is driven by tree-sitter, which sets `foldmethod` and `foldexpr` per buffer in
+-- `lua/plugin/treesitter.lua`. These two are global because they are safe whether or not
+-- a buffer has a parser.
+--
+-- Without `foldlevelstart` every file opens with every fold closed, which is startling.
+opt.foldlevelstart = 99
+
+-- An empty `foldtext` makes Neovim render a closed fold using the line's real syntax
+-- highlighting, instead of the grey `+--  12 lines:` filler. Needs 0.10+.
+opt.foldtext = ""
+
 -- Indentation options are deliberately absent. Neovim's built-in EditorConfig
 -- support is enabled by default and applies this repo's `.editorconfig` `[*.lua]`
 -- rules (tabs, width 4) to Lua buffers on its own. Setting `expandtab` or
