@@ -17,6 +17,7 @@ return {
 		-- automatically. Add a line here whenever a new `<leader>` namespace appears.
 		spec = {
 			{ "<leader>a", group = "AI", },
+			{ "<leader>d", group = "Diagnostics", },
 			{ "<leader>g", group = "Git", },
 		},
 	},
