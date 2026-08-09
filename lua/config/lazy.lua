@@ -29,9 +29,10 @@ require("lazy").setup({
 		{ import = "plugin", },
 	},
 
-	-- Until a colorscheme is chosen, fall back to one that ships with Neovim so the
-	-- install screen is not unstyled.
-	install = { colorscheme = { "habamax", }, },
+	-- Colorscheme for the install screen, which is drawn before `lua/plugin/` has been
+	-- cloned. `habamax` ships with Neovim and is the fallback for a genuinely cold
+	-- start, where catppuccin itself is one of the plugins still being installed.
+	install = { colorscheme = { "catppuccin-nvim", "habamax", }, },
 
 	-- No update nags. Checking for updates stays a deliberate `:Lazy check`.
 	checker = { enabled = false, },
