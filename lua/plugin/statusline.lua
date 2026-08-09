@@ -47,13 +47,21 @@ return {
 		-- incidental here; `lua/plugin/git.lua` remains the git porcelain.
 		require("mini.git").setup()
 
-		statusline.setup({
-			-- Nothing else in this config draws a glyph -- diagnostics use Neovim's default
-			-- letter signs, and neither `mini.icons` nor `nvim-web-devicons` is installed.
-			-- Left on, the git and diagnostic sections would render tofu on a font without
-			-- the Nerd Font range. Flip this once an icon font is a stated requirement.
-			use_icons = false,
+		-- `use_icons` is left at its default of true, which is what turns `Git`, `Diag` and
+		-- `LSP` into single-cell glyphs. That is worth about ten columns, and those columns
+		-- decide something: the Claude section below is the first thing truncation drops, so
+		-- they are the difference between it surviving a vertical split and not.
+		--
+		-- `section_fileinfo`'s filetype icon is the one part that needs a provider. Without
+		-- this line `ensure_get_icon` looks for `MiniIcons`, falls back to
+		-- `nvim-web-devicons`, finds neither, and shows no icon at all -- silently, since a
+		-- missing provider is not an error. mini.nvim is already installed, so it costs
+		-- nothing but the call.
+		--
+		-- All of this assumes the terminal font carries the Nerd Font range.
+		require("mini.icons").setup()
 
+		statusline.setup({
 			content = {
 				active = function()
 					local mode, mode_hl = statusline.section_mode({ trunc_width = 120, })

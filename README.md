@@ -91,24 +91,29 @@ brew only to keep itself to a single package manager.
 `lua/config/vim.lua`) out of `mini.statusline`:
 
 ```
- Normal  Git main ( M) LSP +  init.lua  Claude 5h 47% (resets 1h09m) · 7d 5%  lua utf-8[unix] 344B  1|12│1|1
+ Normal   main ( M) 󰰎 +  init.lua  Claude 5h 47% (resets 1h09m) · 7d 5%  󰢱 lua utf-8[unix] 344B  1|12│1|1
 ```
 
 `mini.nvim` is installed whole rather than the single-module `nvim-mini/mini.statusline`
 mirror, because catppuccin's `auto_integrations` matches on the repo name and its map
 contains `mini.nvim` — the mirror would go unthemed. Unused modules stay inert until their
-own `setup()` runs, so the rest costs disk and nothing else.
+own `setup()` runs, so the rest costs disk and nothing else. Three of them are set up:
 
-Two deliberate gaps:
+- **`mini.statusline`** — the bar itself.
+- **`mini.git`** — purely the data source for the branch section, which reads a
+  buffer-local variable something else has to populate. It also registers a `:Git`
+  command, but `lua/plugin/git.lua` remains the git porcelain.
+- **`mini.icons`** — the provider `section_fileinfo` needs for its filetype icon. Without
+  it that icon is silently absent, since a missing provider is not an error.
 
-- **`use_icons = false`.** Nothing else here draws a glyph — diagnostics use Neovim's
-  letter signs, and neither `mini.icons` nor `nvim-web-devicons` is installed — so icons
-  would render as tofu on a font without the Nerd Font range. Hence `Git` and `LSP` as
-  words. One field to flip once an icon font is a stated requirement.
-- **No diff counts.** `section_diff` needs `mini.diff`, which is not merely a data source:
-  it puts hunk marks in the sign column and binds hunk motions. That is a gutter decision,
-  not a statusline one. `mini.git` *is* set up, purely to populate the branch — it also
-  registers a `:Git` command, but `lua/plugin/git.lua` remains the git porcelain.
+**Icons assume the terminal font carries the Nerd Font range.** They are worth about ten
+columns over the `Git` / `Diag` / `LSP` word forms, and those columns matter: the Claude
+section is the first thing truncation drops. Set `use_icons = false` in the spec to go
+back to words.
+
+One deliberate gap: **no diff counts.** `section_diff` needs `mini.diff`, which is not
+merely a data source — it puts hunk marks in the sign column and binds hunk motions. That
+is a gutter decision, not a statusline one.
 
 Adding a plugin catppuccin knows about does **not** invalidate its compiled theme cache, so
 new highlight groups keep their fallback colours until `:Catppuccin compile` is run or
