@@ -13,6 +13,10 @@ local usage = require("config.claude-usage")
 local WARN_AT = 70
 local CRIT_AT = 90
 
+-- Past this, a reading is dimmed whatever it says: the source refuses to refresh faster
+-- than every 5 minutes, so anything much older than that is not describing the present.
+local STALE_AFTER_S = 15 * 60
+
 -- `%!` has its result rescanned for statusline items, so a literal percent sign has to
 -- reach the line doubled.
 local PERCENT = "%%"
@@ -53,12 +57,35 @@ local function group_for(percent)
 end
 
 
---- The Claude segment: empty until the first successful fetch, dimmed when it fails.
+--- The Claude segment: empty until a reading arrives, dimmed once one goes stale.
+---
+--- Numbers outrank errors. A refresh that fails leaves the previous reading in place, so
+--- whatever we hold is shown and merely marked -- the error text only appears when there
+--- is nothing to show instead.
 --- @return string
 local function segment()
 	local current = usage.get()
+	local parts   = {}
 
-	if current.err then
+	if current.five_hour then
+		table.insert(parts, ("5h %d%s"):format(current.five_hour, PERCENT))
+
+		local resets = current.resets_at and countdown(current.resets_at)
+		if resets then
+			table.insert(parts, ("(resets %s)"):format(resets))
+		end
+	end
+
+	if current.seven_day then
+		local separator = #parts > 0 and "· " or ""
+		table.insert(parts, ("%s7d %d%s"):format(separator, current.seven_day, PERCENT))
+	end
+
+	if #parts == 0 then
+		if not current.err then
+			return ""
+		end
+
 		-- curl's stderr reaches here verbatim and may contain a `%`, which the rescan
 		-- would read as a statusline item. `%%%%` rather than `PERCENT`: `%` is special
 		-- in a gsub replacement too, so it needs doubling twice over.
@@ -66,23 +93,19 @@ local function segment()
 		return ("%%#StatusLineUsageDim#Claude %s%%*"):format(message)
 	end
 
-	if not current.five_hour then
-		return ""
-	end
+	-- `!` for a known failure, plain dimming for a reading that is merely getting old.
+	local age   = current.fetched_at and (os.time() - current.fetched_at) or math.huge
+	local group = group_for(current.five_hour or current.seven_day)
 
-	local parts = { ("5h %d%s"):format(current.five_hour, PERCENT), }
-
-	local resets = current.resets_at and countdown(current.resets_at)
-	if resets then
-		table.insert(parts, ("(resets %s)"):format(resets))
-	end
-
-	if current.seven_day then
-		table.insert(parts, ("· 7d %d%s"):format(current.seven_day, PERCENT))
+	if current.err then
+		table.insert(parts, "!")
+		group = "StatusLineUsageDim"
+	elseif age > STALE_AFTER_S then
+		group = "StatusLineUsageDim"
 	end
 
 	return ("%%#StatusLineUsageDim#Claude %%*%%#%s#%s%%*")
-		:format(group_for(current.five_hour), table.concat(parts, " "))
+		:format(group, table.concat(parts, " "))
 end
 
 

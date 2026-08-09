@@ -99,16 +99,33 @@ statusline plugin — a segment was the whole requirement, so the default
 (`%<%f %h%w%m%r%=%-14.(%l,%c%V%) %P`) is reproduced by hand, since assigning `statusline`
 at all replaces it wholesale.
 
-`lua/config/claude-usage.lua` supplies the numbers from the same endpoint the CLI's own
-`fetchUtilization` calls:
+`lua/config/claude-usage.lua` supplies the numbers, from two sources, cheapest first:
 
-```
-GET https://api.anthropic.com/api/oauth/usage
-```
+1. **`~/.claude.json`'s `cachedUsageUtilization`** — what the CLI persists after its own
+   fetches. Free, needs no token, available immediately at startup. But it goes stale: the
+   CLI will not rewrite it more often than every 5 minutes, treats it as valid for a full
+   hour, and an ACP-only session may not refresh it at all.
+2. **`GET https://api.anthropic.com/api/oauth/usage`** — the endpoint the CLI's own
+   `fetchUtilization` calls, authenticated with the OAuth token in
+   `~/.claude/.credentials.json` (handed to `curl` over stdin via `--config -`, so it never
+   appears in the process list).
 
-authenticated with the OAuth token the CLI stores in `~/.claude/.credentials.json` (handed
-to `curl` over stdin via `--config -`, so it never appears in the process list). Refreshed
-every 60s and on `FocusGained`.
+The cache is adopted whenever it is ahead of what we hold, and a request is only spent when
+the cache has not kept up — so no request at all while something else keeps it warm, and
+otherwise a 5-minute cadence to start with, matching the CLI's own throttle.
+
+**This endpoint is rate-limited: polling it every minute earns an HTTP 429.** It advertises
+no budget, though — a 200 carries no `Retry-After` and no `anthropic-ratelimit-*` header —
+so 5 minutes is an educated starting point, not a known-safe rate. Rather than trusting it,
+the cadence is self-tuning: **every 429 doubles the interval for the rest of the session and
+it never drops back**, up to an hour. Spring-back would just earn another 429 next cycle.
+Ordinary failures — a dropped connection, an expired token — delay the next attempt without
+touching the cadence, since they say nothing about the rate. `:ClaudeUsage` clears the delay
+for an immediate retry and reports the interval in force.
+
+A failed refresh never discards the last good reading — it appends `!` and dims, so a
+transient 429 shows slightly old percentages rather than blanking the line. Any reading
+older than 15 minutes is dimmed whatever it says.
 
 The obvious route does not work: those percentages reach a **terminal** statusline through
 the CLI's stdin payload (`rate_limits.five_hour.used_percentage`) and through nothing else.
@@ -124,8 +141,8 @@ Two things to know:
   The response also contains codenamed windows (`tangelo`, `nimbus_quill`, …) that this
   config deliberately ignores.
 - **Neovim never renews the token.** That is the refresh-token flow, and it belongs to the
-  CLI. An expired token shows as `Claude HTTP 401` until the CLI renews it on its own next
-  request.
+  CLI. An expired token shows as `Claude HTTP 401` — or as the previous reading plus `!` —
+  until the CLI renews it on its own next request.
 
 Needs `curl`, which `install.sh` already installs.
 
