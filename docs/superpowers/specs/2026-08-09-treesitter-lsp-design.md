@@ -256,52 +256,45 @@ delete user data.
 | Command | Minimum | Formula | Needed by |
 |---|---|---|---|
 | `tree-sitter` | 0.26.1 | `tree-sitter` | nvim-treesitter (**brew, not npm** — upstream is explicit) |
-| `cc` | any | *(none — hint)* | compiling parsers |
+| `cc` | any | `gcc` | compiling parsers |
 | `curl` | any | `curl` | mason downloads |
 | `unzip` | any | `unzip` | mason archive extraction |
-| `tar` | any | *(none — hint)* | mason archive extraction |
+| `tar` | any | `gnu-tar` | mason archive extraction |
 | `gzip` | any | `gzip` | mason archive extraction |
 
 On this machine `tree-sitter 0.26.3` (from cargo) and `gcc 13.3.0` are already present,
 so `install.sh`'s existing "do not shadow what is installed" logic finds both and skips.
 Of the rest, only `unzip` is plausibly absent on a minimal Linux image.
 
-`cc` and `tar` carry an empty formula and a hint instead, because neither is brew-fixable
-on Linux under the table's assumptions: `brew install gcc` provides `gcc-13`, not `cc`, and
-`brew install gnu-tar` provides `gtar`, not `tar`. In both cases the post-install
-`have "$cmd"` check would fail and the script would die with a misleading message. On
-Linux, `tar` *is* GNU tar and both come from the base system or the distro's build tools.
+`cc` and `tar` keep a nominal formula, and their brew path is knowingly imperfect: on
+Linux `brew install gcc` provides `gcc-13` rather than `cc`, and `brew install gnu-tar`
+provides `gtar` rather than `tar`, so if either were genuinely absent the script would die
+with a slightly misleading message. Accepted rather than engineered around — on Linux
+`tar` *is* GNU tar and both ship with the base system or the distro's build tools, so a
+machine capable of running Neovim and compiling parsers already has them. The value of
+these entries is that `--check` *reports* them on a new machine, which is the script's job.
 
-### Two required changes to `install.sh`'s table format
+### One required change to `install.sh`'s table format
 
-**1. A `-` minimum means presence-only.** Several new deps have no meaningful version
+**A `-` minimum means presence-only.** Five of the six new deps have no meaningful version
 floor. When `min` is `-`, the loop skips the version probe and reports presence. Without
-this, the entries need a fake `0` minimum and print `✓ unzip 0 (>= 0)`.
+this, those entries need a fake `0` minimum and print `✓ unzip 0 (>= 0)`.
 
-**2. The new `hint` field goes *before* `probe`, not after.** When an entry has a hint, the
-loop prints it instead of attempting a brew install. `cc` and `tar` both need one, for the
-reason given above: `install your distro's build tools (Debian/Ubuntu: apt install
-build-essential)` and `tar should be present on any Linux; install your distro's tar
-package`.
-
-The field order matters and is not a style preference. The loop reads
+The existing four-field format `command|minimum|brew formula|probe` is otherwise unchanged.
+**Do not add a fifth field after `probe`.** The loop reads
 
 ```sh
 IFS='|' read -r cmd min formula probe <<<"$entry"
 ```
 
 and the last variable absorbs the remainder *including* `|` characters, which is what lets
-probes contain pipes. Appending a fifth variable after `probe` truncates every piped
-probe. Verified:
+probes contain pipes. A fifth variable truncates every piped probe. Verified:
 
 ```
 entry: git|2.19.0|git|git --version | awk '{print $3}'
-4 vars → probe = [git --version | awk '{print $3}']     correct
-5 vars → probe = [git --version ]  hint = [ awk '{print $3}']   broken
+4 vars → probe = [git --version | awk '{print $3}']              correct
+5 vars → probe = [git --version ]  extra = [ awk '{print $3}']   broken
 ```
-
-So the format becomes `command|minimum|brew formula|hint|probe`, and the existing four
-entries each gain an empty hint field.
 
 ## Documentation
 
