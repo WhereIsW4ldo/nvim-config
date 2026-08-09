@@ -85,19 +85,42 @@ The distro package is lighter: Homebrew's `wl-clipboard` pulls in its own `wayla
 `wayland-protocols`, whereas the distro one reuses system libraries. `install.sh` uses
 brew only to keep itself to a single package manager.
 
-## Statusline — Claude plan usage
+## Statusline
 
-`lua/config/statusline.lua` sets a **global** statusline (`laststatus = 3`) whose only
-addition to Neovim's built-in default is a right-aligned plan-usage readout:
+`lua/plugin/statusline.lua` builds one **global** bar (`laststatus = 3`, set in
+`lua/config/vim.lua`) out of `mini.statusline`:
 
 ```
-Claude 5h 47% (resets 1h09m) · 7d 5%
+ Normal  Git main ( M) LSP +  init.lua  Claude 5h 47% (resets 1h09m) · 7d 5%  lua utf-8[unix] 344B  1|12│1|1
 ```
 
-It dims below 70%, turns `DiagnosticWarn` at 70 and `DiagnosticError` at 90. There is no
-statusline plugin — a segment was the whole requirement, so the default
-(`%<%f %h%w%m%r%=%-14.(%l,%c%V%) %P`) is reproduced by hand, since assigning `statusline`
-at all replaces it wholesale.
+`mini.nvim` is installed whole rather than the single-module `nvim-mini/mini.statusline`
+mirror, because catppuccin's `auto_integrations` matches on the repo name and its map
+contains `mini.nvim` — the mirror would go unthemed. Unused modules stay inert until their
+own `setup()` runs, so the rest costs disk and nothing else.
+
+Two deliberate gaps:
+
+- **`use_icons = false`.** Nothing else here draws a glyph — diagnostics use Neovim's
+  letter signs, and neither `mini.icons` nor `nvim-web-devicons` is installed — so icons
+  would render as tofu on a font without the Nerd Font range. Hence `Git` and `LSP` as
+  words. One field to flip once an icon font is a stated requirement.
+- **No diff counts.** `section_diff` needs `mini.diff`, which is not merely a data source:
+  it puts hunk marks in the sign column and binds hunk motions. That is a gutter decision,
+  not a statusline one. `mini.git` *is* set up, purely to populate the branch — it also
+  registers a `:Git` command, but `lua/plugin/git.lua` remains the git porcelain.
+
+Adding a plugin catppuccin knows about does **not** invalidate its compiled theme cache, so
+new highlight groups keep their fallback colours until `:Catppuccin compile` is run or
+`~/.cache/nvim/catppuccin` is deleted. Worth doing as the last step of any plugin change.
+
+### The Claude plan-usage segment
+
+`lua/config/claude-segment.lua` renders the right-aligned readout, returning
+`text, highlight_group` — the same shape `MiniStatusline.section_*` uses, so the bar drops
+it into a group list. It depends on no plugin, which is what lets it live in `config/`.
+It dims below 70%, turns `DiagnosticWarn` at 70 and `DiagnosticError` at 90, and is the
+first section dropped when the window narrows past 120 columns.
 
 `lua/config/claude-usage.lua` supplies the numbers, from two sources, cheapest first:
 

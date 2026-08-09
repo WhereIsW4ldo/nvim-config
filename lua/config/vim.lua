@@ -21,6 +21,11 @@ opt.signcolumn = "yes"
 opt.termguicolors = true
 opt.clipboard = "unnamedplus"
 
+-- One statusline for the whole editor rather than one per window. Set here rather than in
+-- `lua/plugin/statusline.lua` because it is a Neovim option, not a plugin one --
+-- mini.statusline has no say in it and simply fills whatever line this produces.
+opt.laststatus = 3
+
 -- Persist undo history between sessions.
 opt.undofile = true
 

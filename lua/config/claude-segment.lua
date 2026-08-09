@@ -1,15 +1,16 @@
--- One global statusline for the whole editor, carrying the Claude plan-usage readout.
+-- The Claude plan-usage reading, formatted as a statusline section.
 --
--- Hand-written on purpose: a statusline plugin is not part of this config yet, and a
--- segment is the whole requirement. `%<%f %h%w%m%r%=%-14.(%l,%c%V%) %P` is Neovim's
--- built-in default (`:help 'statusline'`), reproduced here because assigning `statusline`
--- at all replaces the default wholesale. Everything else on the line is unchanged.
+-- Rendering only. `config.claude-usage` owns the data and the refresh cycle, and calls
+-- `redrawstatus` itself the moment a reading lands or an attempt fails, so nothing here
+-- polls or schedules -- it is asked for a string and returns one.
 --
--- When a statusline plugin does arrive it takes this file's place: it owns `statusline`,
--- and the segment moves into its section list as a call to `claude-usage`.
+-- Deliberately depends on no plugin, which is what lets it live in `config/`. It returns
+-- `text, highlight_group`, the same shape `MiniStatusline.section_*` uses, so
+-- `lua/plugin/statusline.lua` can drop it straight into a group list -- and a different
+-- statusline could consume it unchanged.
 local usage = require("config.claude-usage")
 
--- Percent of the 5-hour window at which the segment stops being informational.
+-- Percent of the 5-hour window at which the section stops being informational.
 local WARN_AT = 70
 local CRIT_AT = 90
 
@@ -17,8 +18,8 @@ local CRIT_AT = 90
 -- than every 5 minutes, so anything much older than that is not describing the present.
 local STALE_AFTER_S = 15 * 60
 
--- `%!` has its result rescanned for statusline items, so a literal percent sign has to
--- reach the line doubled.
+-- The statusline is rebuilt through `%!`, which has its result rescanned for statusline
+-- items, so a literal percent sign has to reach the line doubled.
 local PERCENT = "%%"
 
 local M = {}
@@ -57,13 +58,17 @@ local function group_for(percent)
 end
 
 
---- The Claude segment: empty until a reading arrives, dimmed once one goes stale.
+--- The section: empty until a reading arrives, dimmed once one goes stale.
 ---
 --- Numbers outrank errors. A refresh that fails leaves the previous reading in place, so
 --- whatever we hold is shown and merely marked -- the error text only appears when there
 --- is nothing to show instead.
---- @return string
-local function segment()
+---
+--- An empty string is a section `MiniStatusline.combine_groups` drops entirely, so the
+--- "no reading yet" case costs no space on the line.
+--- @return string  section text
+--- @return string  highlight group for it
+function M.section()
 	local current = usage.get()
 	local parts   = {}
 
@@ -83,14 +88,14 @@ local function segment()
 
 	if #parts == 0 then
 		if not current.err then
-			return ""
+			return "", "StatusLineUsageDim"
 		end
 
 		-- curl's stderr reaches here verbatim and may contain a `%`, which the rescan
 		-- would read as a statusline item. `%%%%` rather than `PERCENT`: `%` is special
 		-- in a gsub replacement too, so it needs doubling twice over.
 		local message = current.err:sub(1, 40):gsub("%%", "%%%%")
-		return ("%%#StatusLineUsageDim#Claude %s%%*"):format(message)
+		return ("Claude %s"):format(message), "StatusLineUsageDim"
 	end
 
 	-- `!` for a known failure, plain dimming for a reading that is merely getting old.
@@ -104,20 +109,13 @@ local function segment()
 		group = "StatusLineUsageDim"
 	end
 
-	return ("%%#StatusLineUsageDim#Claude %%*%%#%s#%s%%*")
-		:format(group, table.concat(parts, " "))
-end
+	-- `combine_groups` opens the group with `%#group#`; the label overrides that to dim
+	-- and then switches back, so the reading keeps its own colour. Switching back
+	-- explicitly rather than closing with `%*` matters -- `%*` restores the statusline's
+	-- default highlight, not this group's.
+	local label = ("%%#StatusLineUsageDim#Claude %%#%s#"):format(group)
 
-
---- @return string
-function M.render()
-	return table.concat({
-		"%<%f %h%w%m%r",
-		"%=",
-		segment(),
-		"  ",
-		"%-14.(%l,%c%V%) %P",
-	})
+	return label .. table.concat(parts, " "), group
 end
 
 
@@ -137,9 +135,6 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 	desc     = "Re-link statusline usage highlights after a colorscheme change",
 	callback = set_highlights,
 })
-
-vim.o.laststatus = 3
-vim.o.statusline = "%!v:lua.require'config.statusline'.render()"
 
 usage.setup()
 

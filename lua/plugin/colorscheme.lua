@@ -33,6 +33,13 @@ return {
 		-- Without it every integration is opt-in by name, which means editing this file
 		-- each time a plugin is added -- exactly the coupling the per-concern layout
 		-- exists to avoid.
+		--
+		-- One trap comes with it: detection runs at setup, but catppuccin serves the
+		-- theme from a compiled cache under `stdpath("cache")/catppuccin`, and installing
+		-- a plugin does not invalidate that cache. So a newly added plugin keeps its
+		-- fallback highlights until the cache is rebuilt -- `:Catppuccin compile`, or
+		-- delete the directory. Worth doing as the last step of adding any plugin
+		-- catppuccin knows about.
 		auto_integrations = true,
 	},
 
