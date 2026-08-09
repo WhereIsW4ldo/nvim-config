@@ -85,6 +85,50 @@ The distro package is lighter: Homebrew's `wl-clipboard` pulls in its own `wayla
 `wayland-protocols`, whereas the distro one reuses system libraries. `install.sh` uses
 brew only to keep itself to a single package manager.
 
+## Statusline — Claude plan usage
+
+`lua/config/statusline.lua` sets a **global** statusline (`laststatus = 3`) whose only
+addition to Neovim's built-in default is a right-aligned plan-usage readout:
+
+```
+Claude 5h 47% (resets 1h09m) · 7d 5%
+```
+
+It dims below 70%, turns `DiagnosticWarn` at 70 and `DiagnosticError` at 90. There is no
+statusline plugin — a segment was the whole requirement, so the default
+(`%<%f %h%w%m%r%=%-14.(%l,%c%V%) %P`) is reproduced by hand, since assigning `statusline`
+at all replaces it wholesale.
+
+`lua/config/claude-usage.lua` supplies the numbers from the same endpoint the CLI's own
+`fetchUtilization` calls:
+
+```
+GET https://api.anthropic.com/api/oauth/usage
+```
+
+authenticated with the OAuth token the CLI stores in `~/.claude/.credentials.json` (handed
+to `curl` over stdin via `--config -`, so it never appears in the process list). Refreshed
+every 60s and on `FocusGained`.
+
+The obvious route does not work: those percentages reach a **terminal** statusline through
+the CLI's stdin payload (`rate_limits.five_hour.used_percentage`) and through nothing else.
+Hook payloads carry only `session_id`, `transcript_path`, `cwd`, `prompt_id`,
+`permission_mode`, `agent_id`, `agent_type` and `effort`. Sessions here run over ACP, which
+never renders a statusline, so there is no payload to read.
+
+Two things to know:
+
+- **The endpoint is internal.** The CLI's own schema for it carries the note *"the response
+  shape may change"*. When the readout goes blank or wrong, `:ClaudeUsageDebug` opens the
+  raw JSON in a scratch buffer; `:ClaudeUsage` forces a refresh and echoes the parsed state.
+  The response also contains codenamed windows (`tangelo`, `nimbus_quill`, …) that this
+  config deliberately ignores.
+- **Neovim never renews the token.** That is the refresh-token flow, and it belongs to the
+  CLI. An expired token shows as `Claude HTTP 401` until the CLI renews it on its own next
+  request.
+
+Needs `curl`, which `install.sh` already installs.
+
 ## Terminal key support
 
 One keybinding needs a terminal that implements the **kitty keyboard protocol**:

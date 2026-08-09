@@ -5,3 +5,7 @@ require("config.vim")
 require("config.lazy")
 require("config.keymap")
 require("config.autocommand")
+
+-- Last, so the colorscheme `config.lazy` loads eagerly is already in place when the
+-- statusline links its highlight groups.
+require("config.statusline")
