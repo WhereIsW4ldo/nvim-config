@@ -22,6 +22,20 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 Plugins that need something installed outside Neovim. lazy.nvim will **not** install
 these — a missing one means the plugin loads but silently does nothing.
 
+### Language servers — managed by mason, not this script
+
+`lua/plugin/lsp.lua` lists servers in `ensure_installed`, and
+[mason](https://github.com/mason-org/mason.nvim) installs them into
+`~/.local/share/nvim/mason/` on first start. Nothing to do by hand.
+
+`install.sh` guarantees only the toolchains mason shells out to, so **`./install.sh
+--check` says nothing about servers** — a green check does not imply a working language
+server. Use `:checkhealth mason` for that, and `:Mason` (then `U`) to update them.
+
+Unlike the rest of this config, server versions are **not pinned**: mason has no
+lockfile, so a fresh machine gets whatever is current. That is a deliberate trade for
+not maintaining a server list in two places.
+
 ### `claude-agent-acp` — required by `lua/plugin/ai.lua`
 
 [agentic.nvim](https://github.com/carlos-algms/agentic.nvim) talks to Claude Code over

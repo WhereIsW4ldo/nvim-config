@@ -162,11 +162,19 @@ as confirmed working.
 - Commit `lazy-lock.json` alongside any plugin change.
 - **External dependencies live in `install.sh`.** Some plugins need a toolchain that is
   not a Lua file (Rust for `blink.cmp`, the `tree-sitter` CLI for parsers, Node, a
-  language server, a global npm package). Every one of those must be added to
-  `install.sh`'s `BREW_DEPS` or `NPM_DEPS` table *and* to `README.md` — otherwise a
-  fresh machine gets a plugin that loads but silently does nothing. `./install.sh
-  --check` verifies the tables match reality and exits non-zero if not. The
-  `add-nvim-plugin` skill enforces this as a step.
+  global npm package). Every one of those must be added to `install.sh`'s `BREW_DEPS` or
+  `NPM_DEPS` table *and* to `README.md` — otherwise a fresh machine gets a plugin that
+  loads but silently does nothing. `./install.sh --check` verifies the tables match
+  reality and exits non-zero if not. The `add-nvim-plugin` skill enforces this as a step.
+  A `-` minimum in `BREW_DEPS` means presence-only, for tools with no version floor.
+- **Language servers are the one exception: they live in mason, not `install.sh`.**
+  `lua/plugin/lsp.lua`'s `ensure_installed` is the list; mason installs them into
+  `~/.local/share/nvim/mason/`. `install.sh` guarantees only the *toolchains* mason shells
+  out to (`curl`, `unzip`, `tar`, `gzip`), and `--check` deliberately says nothing about
+  servers — so a green `--check` no longer implies a fully working editor. `:checkhealth
+  mason` covers that half. The accepted cost is that mason has no lockfile, so server
+  versions float where `lazy-lock.json` pins everything else; `ensure_installed` accepts
+  per-server pinning (`"rust_analyzer@nightly"`) if that ever matters.
 - **Platform support:** Linux is the supported target. macOS is structurally
   accounted for in `install.sh` but untested — keep new code portable, and do not
   assume Linux-only paths or GNU-only flags without saying so.
