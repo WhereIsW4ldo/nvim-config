@@ -115,10 +115,10 @@ The distro package is lighter: Homebrew's `wl-clipboard` pulls in its own `wayla
 `wayland-protocols`, whereas the distro one reuses system libraries. `install.sh` uses
 brew only to keep itself to a single package manager.
 
-### `ripgrep` — required by `lua/plugin/explorer.lua`
+### `ripgrep` — required by `lua/plugin/picker.lua` and `lua/plugin/explorer.lua`
 
-`snacks.explorer` is a `snacks.picker` source, and the picker shells out for anything it
-does not read off the filesystem itself.
+`snacks.picker` shells out for anything it does not read off the filesystem itself, and
+`snacks.explorer` is one of its sources.
 
 ```sh
 brew install ripgrep               # or: sudo apt install ripgrep
