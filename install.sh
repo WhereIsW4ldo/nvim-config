@@ -53,6 +53,13 @@ BREW_DEPS=(
 	# new enough to build the project is new enough here. `rustup` is the better install
 	# than brew's `rust` if you want per-project toolchains; either satisfies this.
 	"cargo|-|rust|"
+	# snacks.explorer's search box and its `<leader>/` grep-in-directory action shell out
+	# here. The file finder degrades (fd -> rg -> find), but grep does not: `rg` is
+	# hardcoded in snacks' grep source with no fallback, so without this the explorer
+	# opens fine and one of its actions silently returns nothing.
+	# 12.0.0 is where `--max-columns-preview` landed, which snacks passes unconditionally.
+	# `--version` prints `ripgrep 14.1.0` on the first line, hence field 2.
+	"rg|12.0.0|ripgrep|rg --version | head -1 | awk '{print \$2}'"
 	# mason shells out to these four to download and unpack language servers.
 	"curl|-|curl|"
 	"unzip|-|unzip|"
@@ -75,6 +82,14 @@ NPM_DEPS=(
 # Guards are resolved in needed_here() below -- add a branch there for a new one.
 CONDITIONAL_DEPS=(
 	"wl-paste|wl-clipboard|linux-wayland"
+	# snacks.explorer sends deletions to the system trash rather than unlinking them. It
+	# probes `trash` (trash-cli), then `gio`, then the two `kioclient`s, and if none is
+	# executable it falls back to a permanent delete -- with no warning. So this is not a
+	# dependency the plugin needs to load, it is the one that decides whether `d` in the
+	# explorer is recoverable. `gio` ships with glib and is on any modern Linux desktop.
+	# macOS would want trash-cli's `trash` instead; it is untested here, so it is not
+	# listed rather than being listed wrongly.
+	"gio|glib|linux"
 )
 
 # ── Output helpers ───────────────────────────────────────────────────────────────

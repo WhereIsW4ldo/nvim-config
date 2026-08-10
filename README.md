@@ -115,6 +115,38 @@ The distro package is lighter: Homebrew's `wl-clipboard` pulls in its own `wayla
 `wayland-protocols`, whereas the distro one reuses system libraries. `install.sh` uses
 brew only to keep itself to a single package manager.
 
+### `ripgrep` — required by `lua/plugin/explorer.lua`
+
+`snacks.explorer` is a `snacks.picker` source, and the picker shells out for anything it
+does not read off the filesystem itself.
+
+```sh
+brew install ripgrep               # or: sudo apt install ripgrep
+```
+
+Two paths use it, and they fail differently:
+
+- **File finding degrades.** The finder tries `fd`, then `fdfind`, then `rg --files`,
+  then plain `find`. Something always works; without `rg` or `fd` you lose gitignore
+  awareness and speed, nothing more. `fd` is therefore *not* in `install.sh`.
+- **Grep does not degrade.** `<leader>/` inside the explorer ("Grep in current
+  directory") has `rg` hardcoded with no fallback, so a missing ripgrep makes that one
+  action return nothing at all — no error, just an empty list.
+
+### `gio` — recoverable deletes in the explorer, Linux only
+
+`snacks.explorer` sends `d` to the system trash rather than unlinking. It probes `trash`
+(trash-cli), then `gio`, then `kioclient5` / `kioclient`, and **if none of them is
+executable it permanently deletes instead, without saying so.**
+
+`gio` ships with glib and is already present on any modern Linux desktop, which is why
+`install.sh` lists it as a conditional dependency rather than something you normally have
+to install. On macOS the equivalent is trash-cli's `trash`; that platform is untested
+here, so it is deliberately not listed.
+
+To opt out of trash entirely and take the permanent delete on purpose, set
+`explorer = { enabled = true, trash = false, }` in `lua/plugin/explorer.lua`.
+
 ## Statusline
 
 `lua/plugin/statusline.lua` builds one **global** bar (`laststatus = 3`, set in
