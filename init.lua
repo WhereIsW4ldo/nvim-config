@@ -2,6 +2,7 @@
 -- before `config.lazy` loads plugin specs, since specs declare `<leader>` mappings at
 -- spec time. Keep this list to requires only -- no logic belongs here.
 require("config.vim")
+require("config.diagnostic")
 require("config.lazy")
 require("config.keymap")
 require("config.autocommand")

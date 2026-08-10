@@ -100,6 +100,35 @@ return {
 					map("gri", "lsp_implementations", "Goto implementation")
 					map("grt", "lsp_type_definitions", "Goto type definition")
 					map("gO", "lsp_symbols", "Document symbols")
+
+					-- Inlay hints: inferred types and parameter names, drawn inside the
+					-- line. Core since 0.10, off by default, and nothing here switched
+					-- them on until now.
+					--
+					-- Deliberately in this callback rather than a file of its own. The
+					-- per-concern split would put it elsewhere, but a second spec for
+					-- `nvim-lspconfig` would need a second `init`, and lazy.nvim keeps
+					-- only one of those per plugin -- the failure documented in
+					-- `lua/config/diagnostic.lua`. Splitting this file means moving the
+					-- whole LspAttach block, not adding to it.
+					local client = vim.lsp.get_client_by_id(args.data.client_id)
+
+					-- Guarded and buffer-scoped: an unguarded global `enable(true)` also
+					-- turns hints on in buffers whose server has no `textDocument/inlayHint`,
+					-- where they are silently dead weight.
+					if client and client:supports_method("textDocument/inlayHint") then
+						vim.lsp.inlay_hint.enable(true, { bufnr = args.buf, })
+					end
+
+					-- `<leader>d` is the which-key "Diagnostics" group, which is not
+					-- strictly what an inlay hint is -- but it is the LSP-adjacent group
+					-- that exists, and a toggle needs to be discoverable. Worth moving to
+					-- a `<leader>u` toggles group if one ever appears.
+					vim.keymap.set("n", "<leader>dh", function()
+						local filter = { bufnr = 0, }
+
+						vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled(filter), filter)
+					end, { buffer = args.buf, desc = "Toggle inlay hints", })
 				end,
 			})
 		end,

@@ -41,6 +41,28 @@ return {
 		-- delete the directory. Worth doing as the last step of adding any plugin
 		-- catppuccin knows about.
 		auto_integrations = true,
+
+		-- Squiggly diagnostic underlines. Catppuccin's `native_lsp` integration defaults
+		-- every one of these to a flat `"underline"` (its `lua/catppuccin/init.lua:47`),
+		-- which is why LSP errors were drawn as straight lines -- core's `underline`
+		-- handler was on the whole time, the highlight groups simply were not wavy.
+		--
+		-- `:help attr-list` is explicit that `undercurl` falls back to a plain underline on
+		-- a terminal that lacks it, so this is a no-op rather than a breakage on one that
+		-- does. Ghostty's terminfo does carry `Smulx`, so it renders here.
+		--
+		-- Top-level `lsp_styles`, not `integrations.native_lsp.underlines`. Most guides
+		-- and older answers still give the latter; this version of catppuccin moved these
+		-- out of the integration table (`lua/catppuccin/init.lua:39`), and setting the old
+		-- path is silently ignored rather than reported as an unknown option.
+		lsp_styles = {
+			underlines = {
+				errors      = { "undercurl", },
+				warnings    = { "undercurl", },
+				information = { "undercurl", },
+				hints       = { "undercurl", },
+			},
+		},
 	},
 
 	-- `setup` only builds and caches the palette; it does not apply it. A table alone
