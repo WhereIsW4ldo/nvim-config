@@ -27,6 +27,17 @@ opt.signcolumn = "yes:2"
 opt.termguicolors = true
 opt.clipboard = "unnamedplus"
 
+-- The default border for every floating window that does not ask for one of its own.
+-- Without it `K` (LSP hover) draws a borderless float that runs straight into the buffer
+-- text behind it, with nothing marking where the popup ends.
+--
+-- One option rather than a `border` field per plugin, because core and all three float
+-- providers here read it as their fallback: `vim.lsp.util.open_floating_preview` and
+-- `vim.diagnostic`'s float in 0.11+, `snacks.win` (`lua/snacks/win.lua`), mini's modules,
+-- and blink.cmp (`lib/window/utils.lua`'s `pick_border`). Anything that sets `border`
+-- explicitly still wins -- this only fills the gap.
+opt.winborder = "rounded"
+
 -- One statusline for the whole editor rather than one per window. Set here rather than in
 -- `lua/plugin/statusline.lua` because it is a Neovim option, not a plugin one --
 -- mini.statusline has no say in it and simply fills whatever line this produces.
