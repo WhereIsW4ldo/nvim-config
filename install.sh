@@ -79,6 +79,28 @@ BREW_DEPS=(
 	# as with `cc` the formula is nominal and the value is in --check reporting it.
 	"tar|-|gnu-tar|"
 	"gzip|-|gzip|"
+	# ── Linters, for `lua/plugin/lint.lua` ───────────────────────────────────────────
+	# nvim-lint spawns these by name and installs none of them. A missing one warns once
+	# and contributes no diagnostics, so the failure is quiet rather than loud.
+	# All presence-only: nvim-lint's definitions use flags these tools have had for years,
+	# and none of them is a version floor worth defending.
+	# The two Node-based linters are NOT here -- see NPM_DEPS below for why.
+	#
+	# Lua. `lua_ls` reports types; luacheck reports unused locals and global leaks.
+	# Pulls brew's `lua` (5.4) as a dependency, which is only the interpreter luacheck
+	# itself runs on -- it does not have to match the LuaJIT that Neovim embeds, and the
+	# `std = "luajit"` line in `.luacheckrc` is what tells it which globals to expect.
+	"luacheck|-|luacheck|"
+	# Terraform. As with `terraform` above, NOT a core formula -- core has no `tflint` at
+	# all, so this is tap-qualified and `brew install` taps it on demand.
+	"tflint|-|terraform-linters/tap/tflint|"
+	# Dockerfiles, for the best-practice rules `docker_language_server` does not cover
+	# (pinned base tags, `apt-get upgrade`, shell-form pitfalls).
+	"hadolint|-|hadolint|"
+	# SQL. Needs a dialect before it will lint anything at all -- see README.md.
+	"sqlfluff|-|sqlfluff|"
+	# Shell scripts, the one filetype here with no language server behind it.
+	"shellcheck|-|shellcheck|"
 )
 
 # Format: command|npm package spec
@@ -92,6 +114,21 @@ NPM_DEPS=(
 	# Vue, TypeScript and the JSON/YAML/CSS files around them. `prettierd` is the binary
 	# name; the package is scoped.
 	"prettierd|@fsouza/prettierd@0.29.0"
+	# The two linters from `lua/plugin/lint.lua` that are Node programs. They are here
+	# rather than in BREW_DEPS on purpose: both brew formulae declare a dependency on
+	# `node`, so installing them that way pulls a SECOND Node in beside the Node 22 this
+	# config already requires on PATH -- exactly what the version probes above exist to
+	# avoid. npm also lets them be pinned, which brew does not.
+	#
+	# ESLint for the TypeScript and Vue filetypes, as a daemon -- the same rules `eslint`
+	# applies, without paying Node startup on every lint. nvim-lint prefers
+	# `./node_modules/.bin/eslint_d` when a project has its own, so this global copy is
+	# the fallback for projects that do not.
+	"eslint_d|eslint_d@15.0.3"
+	# Markdown style rules -- `marksman` handles links and references and has no opinion
+	# on heading or list formatting. `cli2` is the current line; plain `markdownlint-cli`
+	# is the older one and nvim-lint ships definitions for both.
+	"markdownlint-cli2|markdownlint-cli2@0.23.2"
 )
 
 # Dependencies that only apply on some platforms or session types.

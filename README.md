@@ -115,6 +115,105 @@ brew install hashicorp/tap/terraform
 `terraform-ls` execs `terraform` by name. An OpenTofu setup wants `tofu-ls` instead,
 which would be a change to `ensure_installed` in `lua/plugin/lsp.lua`, not a swap here.
 
+### Linters — required by `lua/plugin/lint.lua`
+
+[nvim-lint](https://github.com/mfussenegger/nvim-lint) spawns these by name, parses their
+output and reports it through `vim.diagnostic`. It installs none of them, and one that is
+not installed is **skipped silently** on save — so an unlinted buffer looks exactly like a
+clean one. `./install.sh --check` is the place that difference is visible; pressing
+`<leader>l` is the other, since the manual keymap deliberately keeps the error.
+
+(The silence is on purpose. Upstream reports a missing binary through plain `vim.notify`
+rather than `notify_once`, so without the filter in `lua/plugin/lint.lua` a linter you have
+not installed would raise an error on *every* save and every `InsertLeave` for the rest of
+the session.)
+
+The premise is that a language server is not a linter: `lua_ls` type-checks but never
+mentions an unused local, `vtsls` knows every type and nothing about the project's ESLint
+rules, `marksman` resolves Markdown links and holds no opinion on heading style.
+
+| Filetype | Linter | What it adds over the language server |
+|---|---|---|
+| `lua` | `luacheck` | Unused locals, shadowing, global leaks — none of which `lua_ls` reports. |
+| `terraform` | `tflint` | Provider-specific and best-practice rules; `terraformls` only validates. |
+| `markdown` | `markdownlint-cli2` | Heading/list/formatting style. `marksman` is links and references only. |
+| `dockerfile` | `hadolint` | Pinned base tags, `apt-get upgrade`, shell-form pitfalls. |
+| `sql` | `sqlfluff` | Dialect-aware style rules on top of `sqls`' completion. |
+| `sh` | `shellcheck` | Everything — this is the one filetype here with **no** language server at all. |
+| `vue`, `typescript`, `typescriptreact`, `javascript`, `javascriptreact` | `eslint_d` | The project's own rules and plugin rules (`eslint-plugin-vue`), which `vtsls` and `vue_ls` never see. |
+
+**C# and Rust are deliberately absent.** `roslyn_ls` *is* Roslyn, the same engine the
+standalone C# analysers call, and `clippy` is a `rust_analyzer` setting rather than a
+second process worth spawning beside it. Adding either would duplicate work the server
+already does.
+
+Four come from Homebrew — `tflint`, like `terraform` above, is **not a core formula** (core
+has no `tflint` at all), so it is tap-qualified and `brew install` taps it on demand:
+
+```sh
+brew install luacheck hadolint sqlfluff shellcheck
+brew install terraform-linters/tap/tflint
+```
+
+The two Node-based linters come from npm instead, and that split is deliberate: both have
+Homebrew formulae, but each declares a dependency on `node`, so installing them that way
+pulls a **second Node** in beside the Node 22 this config already requires. npm also lets
+them be pinned, which the `brew install` above does not.
+
+```sh
+npm i -g eslint_d@15.0.3 markdownlint-cli2@0.23.2
+```
+
+#### Three things that will bite
+
+- **`sqlfluff` lints nothing until it has a dialect.** It defaults `dialect` to `None` and
+  then requires it, so every SQL buffer fails outright until one is set. Do *not* put
+  `--dialect` in the plugin spec — a CLI flag would override every project's own
+  `.sqlfluff`. It belongs in config, where the *nearest* file wins.
+
+  This machine is set up two-tier, since the usual dialect is SQL Server and personal
+  projects are Postgres. The machine-wide default lives **outside this repo**, at
+  `~/.config/sqlfluff/.sqlfluff`:
+
+  ```ini
+  [sqlfluff]
+  dialect = tsql
+  ```
+
+  A Postgres project then overrides it with its own `.sqlfluff` in the repo root:
+
+  ```ini
+  [sqlfluff]
+  dialect = postgres
+  ```
+
+  Mind the identifiers: they are **`tsql`** and **`postgres`**. `mssql` and `postgresql`
+  are not sqlfluff dialects and will error. `sqlfluff dialects` lists all of them.
+
+- **`tflint` does not read the buffer.** Upstream's definition passes `--recursive` with
+  `stdin = false`, so it lints the directory *as it is on disk*. Unsaved changes are
+  invisible to it, and its diagnostics can name files other than the one you are in.
+
+- **`eslint_d` prefers the repo's own copy.** It runs `./node_modules/.bin/eslint_d` when
+  that exists, which is what makes a project's ESLint version and plugin resolution win
+  over the global one — and is also arbitrary code from the repository you just opened.
+  Upstream is explicit: do not lint an untrusted repository. It documents a `wrap_linter`
+  sandbox recipe (`systemd-run`, bubblewrap) for when that matters.
+
+`.luacheckrc` in the repo root exists for the same reason: without it luacheck reports
+`accessing undefined variable vim` on nearly every line of this config. It sets
+`std = "luajit"` (what Neovim embeds) and declares `vim` as a writable global, since the
+config assigns through it.
+
+Verify:
+
+```sh
+./install.sh --check          # names any linter that is missing
+```
+
+`<leader>l` re-runs the linters for the current buffer, which is the quickest way to
+confirm a freshly installed one is now being found.
+
 ### `claude-agent-acp` — required by `lua/plugin/ai.lua`
 
 [agentic.nvim](https://github.com/carlos-algms/agentic.nvim) talks to Claude Code over
