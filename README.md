@@ -153,13 +153,13 @@ To opt out of trash entirely and take the permanent delete on purpose, set
 `lua/config/vim.lua`) out of `mini.statusline`:
 
 ```
- Normal   main ( M) 󰰎 +  init.lua  Claude 5h 47% (resets 1h09m) · 7d 5%  󰢱 lua utf-8[unix] 344B  1|12│1|1
+ Normal   main ( M)  #3 +2 ~6 󰰎 +  init.lua  Claude 5h 47% (resets 1h09m) · 7d 5%  󰢱 lua utf-8[unix] 344B  1|12│1|1
 ```
 
 `mini.nvim` is installed whole rather than the single-module `nvim-mini/mini.statusline`
 mirror, because catppuccin's `auto_integrations` matches on the repo name and its map
 contains `mini.nvim` — the mirror would go unthemed. Unused modules stay inert until their
-own `setup()` runs, so the rest costs disk and nothing else. Three of them are set up:
+own `setup()` runs, so the rest costs disk and nothing else. Four of them are set up:
 
 - **`mini.statusline`** — the bar itself.
 - **`mini.git`** — purely the data source for the branch section, which reads a
@@ -167,15 +167,17 @@ own `setup()` runs, so the rest costs disk and nothing else. Three of them are s
   command, but `lua/plugin/git.lua` remains the git porcelain.
 - **`mini.icons`** — the provider `section_fileinfo` needs for its filetype icon. Without
   it that icon is silently absent, since a missing provider is not an error.
+- **`mini.diff`** — the data source behind the `#3 +2 ~6` counts, but set up from
+  `lua/plugin/diff.lua` rather than here, because its real job is the gutter. See
+  **[Git hunks](#git-hunks)**.
 
 **Icons assume the terminal font carries the Nerd Font range.** They are worth about ten
 columns over the `Git` / `Diag` / `LSP` word forms, and those columns matter: the Claude
 section is the first thing truncation drops. Set `use_icons = false` in the spec to go
 back to words.
 
-One deliberate gap: **no diff counts.** `section_diff` needs `mini.diff`, which is not
-merely a data source — it puts hunk marks in the sign column and binds hunk motions. That
-is a gutter decision, not a statusline one.
+`section_diff` reads `vim.b.minidiff_summary_string or vim.b.gitsigns_status`, so the
+counts would survive swapping mini.diff for gitsigns without touching this file.
 
 Adding a plugin catppuccin knows about does **not** invalidate its compiled theme cache, so
 new highlight groups keep their fallback colours until `:Catppuccin compile` is run or
@@ -235,6 +237,45 @@ Two things to know:
   until the CLI renews it on its own next request.
 
 Needs `curl`, which `install.sh` already installs.
+
+## Git hunks
+
+`lua/plugin/diff.lua` sets up **`mini.diff`** — gutter marks for changed lines, hunk
+motions, and staging. It is the in-buffer half of git; `lua/plugin/git.lua` (lazygit) stays
+the porcelain. No download: `mini.nvim` is already installed for the statusline.
+
+| Key | Does |
+|---|---|
+| `]h` / `[h` | Next / previous hunk. Also mapped in operator-pending mode, so `d]h` works |
+| `]H` / `[H` | Last / first hunk |
+| `gh` | Apply — **stages** the hunk to the git index. An operator, so `ghih`, `ghj`, or `gh` over a visual selection; `.` repeats it |
+| `gH` | Reset — rewrites the buffer text back to the index. Same operator shape |
+| `gh` (operator-pending) | Hunk-range textobject, as in `ghgh` to stage the hunk under the cursor |
+| `<leader>go` | Toggle the overlay: deleted and changed reference lines shown inline as virtual text, with word-level diff |
+
+Chosen over **gitsigns.nvim**, the fuller plugin, and **vgit.nvim**, which needs
+`plenary.nvim` plus `nvim-web-devicons` and documents neither a textobject nor
+partial-hunk staging. mini.diff wins on hunk ergonomics — `]h`/`[h` are its own defaults,
+and apply/reset are real `operatorfunc` operators, so `.` repeats them with no `vim-repeat`
+dependency, which gitsigns does need.
+
+What that costs, stated plainly:
+
+- **No blame, of any kind.** gitsigns has current-line virtual text and a full-file blame
+  split; this has neither.
+- **No `vimdiff` against the index.** The overlay is the nearest thing, and it is a
+  different shape — virtual text inside this buffer, not a second editable window.
+- **It stages but cannot unstage.** Upstream calls unstaging an explicit non-goal and says
+  to use a full Git client — here that is `<leader>gg`.
+- `gH` never invokes git. It rewrites buffer text to match the reference.
+
+Two settings are not the defaults, both deliberate:
+
+- `view.style = "sign"`. mini.diff picks `"number"` whenever `'number'` is set, and it is —
+  that recolours the line number instead of drawing a gutter mark.
+- `signcolumn = "yes:2"` in `lua/config/vim.lua`. mini.diff's extmarks sit at priority 199
+  and `vim.diagnostic` signs at 10, so in a one-cell gutter the hunk mark would hide every
+  error and warning sign. The cost is one permanent column of width.
 
 ## Terminal key support
 

@@ -15,11 +15,12 @@
 -- developed of the three by a wide margin.
 --
 -- The cost, stated plainly: lualine's git sections are self-contained, and these are not
--- -- `section_git` reads a buffer variable that something else has to populate, which is
--- why `mini.git` is set up below. `section_diff` (added/changed/deleted counts) is
--- omitted for the same reason inverted: it needs `mini.diff`, and that one is not just a
--- data source -- it puts hunk marks in the sign column and binds hunk motions. That is a
--- gutter decision, not a statusline one, so it is left for whenever it is actually wanted.
+-- -- `section_git` and `section_diff` both read buffer variables that something else has
+-- to populate. `mini.git` is set up below for the first. The second is fed by `mini.diff`,
+-- which is a gutter decision rather than a statusline one and so lives in
+-- `lua/plugin/diff.lua`; this file only renders whatever it publishes. Note that
+-- `section_diff` reads `vim.b.minidiff_summary_string or vim.b.gitsigns_status`, so the
+-- counts survive swapping mini.diff for gitsigns.
 return {
 	-- The whole bundle rather than the single-module `nvim-mini/mini.statusline` mirror.
 	-- Modules are inert until their own `setup` runs, so the extra 40-odd cost nothing but
@@ -66,6 +67,7 @@ return {
 				active = function()
 					local mode, mode_hl = statusline.section_mode({ trunc_width = 120, })
 					local git           = statusline.section_git({ trunc_width = 40, })
+					local diff          = statusline.section_diff({ trunc_width = 75, })
 					local diagnostics   = statusline.section_diagnostics({ trunc_width = 75, })
 					local lsp           = statusline.section_lsp({ trunc_width = 75, })
 					local filename      = statusline.section_filename({ trunc_width = 140, })
@@ -82,7 +84,7 @@ return {
 
 					return statusline.combine_groups({
 						{ hl = mode_hl,                  strings = { mode, }, },
-						{ hl = "MiniStatuslineDevinfo",  strings = { git, diagnostics, lsp, }, },
+						{ hl = "MiniStatuslineDevinfo",  strings = { git, diff, diagnostics, lsp, }, },
 						"%<", -- Truncate here first
 						{ hl = "MiniStatuslineFilename", strings = { filename, }, },
 						"%=", -- Right-align everything below
