@@ -53,6 +53,15 @@ BREW_DEPS=(
 	# new enough to build the project is new enough here. `rustup` is the better install
 	# than brew's `rust` if you want per-project toolchains; either satisfies this.
 	"cargo|-|rust|"
+	# Terraform, for `terraformls` -- which does not format HCL itself. Its
+	# `textDocument/formatting` handler builds a TerraformExecutor and runs the real
+	# `terraform fmt` through it, so without this binary Terraform files are the one
+	# filetype in `lua/plugin/format.lua`'s LSP-fallback group that silently formats to
+	# nothing. Presence-only: `terraform fmt` predates every version anyone still runs.
+	# NOT a Homebrew core formula -- core dropped it after the BUSL relicense, so this is
+	# tap-qualified and `brew install` taps it on demand. `opentofu` is the core-formula
+	# alternative but `terraform-ls` execs `terraform` by name, so it is not a substitute.
+	"terraform|-|hashicorp/tap/terraform|"
 	# snacks.explorer's search box and its `<leader>/` grep-in-directory action shell out
 	# here. The file finder degrades (fd -> rg -> find), but grep does not: `rg` is
 	# hardcoded in snacks' grep source with no fallback, so without this the explorer
@@ -78,6 +87,11 @@ BREW_DEPS=(
 # these consciously rather than floating on latest.
 NPM_DEPS=(
 	"claude-agent-acp|@agentclientprotocol/claude-agent-acp@0.66.0"
+	# prettier, as a daemon, for conform.nvim -- see `lua/plugin/format.lua`. It bundles
+	# its own prettier (a dependency of the package), so this one entry covers markdown,
+	# Vue, TypeScript and the JSON/YAML/CSS files around them. `prettierd` is the binary
+	# name; the package is scoped.
+	"prettierd|@fsouza/prettierd@0.29.0"
 )
 
 # Dependencies that only apply on some platforms or session types.

@@ -50,10 +50,11 @@ not maintaining a server list in two places.
 | SQL | `sqls` | `sqlls`, which is simply broken: sql-language-server 1.7.1 reaches into a `vscode-languageserver-protocol` subpath that modern Node blocks via `exports`, so it exits 1 on startup. |
 | Rust | `rust_analyzer` | — |
 
-Two of them need a toolchain `install.sh` now installs: **`dotnet`**, because
+Three of them need a toolchain `install.sh` now installs: **`dotnet`**, because
 `roslyn_ls` is distributed as a NuGet package that mason installs by spawning `dotnet`,
-and the server is a `net10.0` assembly; and **`cargo`**, because `rust_analyzer` shells
-out to `cargo metadata` and knows nothing about a project without it.
+and the server is a `net10.0` assembly; **`cargo`**, because `rust_analyzer` shells
+out to `cargo metadata` and knows nothing about a project without it; and
+**`terraform`**, because `terraformls` does not format HCL itself — see below.
 
 Three gaps worth knowing about:
 
@@ -65,6 +66,54 @@ Three gaps worth knowing about:
   attaches on `yaml.docker-compose`, so `lua/plugin/docker.lua` registers the patterns.
   A Compose file under a name neither `compose*.yaml` nor `docker-compose*.yaml` matches
   will open as plain `yaml` and get no server.
+
+### `prettierd` — required by `lua/plugin/format.lua`
+
+[conform.nvim](https://github.com/stevearc/conform.nvim) runs a CLI formatter only where
+one beats the language server. That is prettier, for markdown (`marksman` implements no
+formatting at all) and for the Vue/TypeScript family plus the JSON/YAML/CSS files around
+them (`vtsls` formats with tsserver's formatter, which is not prettier's style and ignores
+a project's `.prettierrc`). Everything else — Lua, Terraform, C#, Rust, SQL, Dockerfiles —
+falls through to its server and needs nothing here.
+
+```sh
+npm i -g @fsouza/prettierd@0.29.0
+```
+
+`prettierd` is prettier behind a daemon, so it pays its startup cost once per session
+rather than once per save. It bundles its own prettier as a dependency, so this single
+package covers every filetype above.
+
+Without it, those filetypes fall back to plain `prettier` — resolved from
+`node_modules/.bin` first, so a project that depends on prettier still formats. With
+neither, conform warns **once per filetype per session** rather than failing silently,
+which is the one place in this config a missing dependency announces itself.
+
+Verify:
+
+```sh
+command -v prettierd && prettierd --version
+```
+
+`:ConformInfo` is the in-editor version: it lists which formatters resolved for the
+current buffer and where the log file is.
+
+### `terraform` — HCL formatting, required by `terraformls`
+
+`terraformls` does not format HCL. Its `textDocument/formatting` handler builds a
+`TerraformExecutor` and runs the real `terraform fmt` through it, so without the binary
+Terraform is the one filetype in the LSP-fallback group that formats to nothing.
+
+**Not a Homebrew core formula** — core dropped `terraform` after HashiCorp's BUSL
+relicense, so `install.sh` uses the official tap and `brew install` taps it on demand:
+
+```sh
+brew install hashicorp/tap/terraform
+```
+
+`opentofu` *is* in Homebrew core and is the usual substitute, but not here:
+`terraform-ls` execs `terraform` by name. An OpenTofu setup wants `tofu-ls` instead,
+which would be a change to `ensure_installed` in `lua/plugin/lsp.lua`, not a swap here.
 
 ### `claude-agent-acp` — required by `lua/plugin/ai.lua`
 
