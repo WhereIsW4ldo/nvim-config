@@ -194,11 +194,23 @@ npm i -g eslint_d@15.0.3 markdownlint-cli2@0.23.2
   `stdin = false`, so it lints the directory *as it is on disk*. Unsaved changes are
   invisible to it, and its diagnostics can name files other than the one you are in.
 
-- **`eslint_d` prefers the repo's own copy.** It runs `./node_modules/.bin/eslint_d` when
-  that exists, which is what makes a project's ESLint version and plugin resolution win
-  over the global one — and is also arbitrary code from the repository you just opened.
-  Upstream is explicit: do not lint an untrusted repository. It documents a `wrap_linter`
-  sandbox recipe (`systemd-run`, bubblewrap) for when that matters.
+- **`eslint_d` only lints projects that have their own ESLint, by design.** It stores its
+  daemon token beside whichever eslint it resolves. With a project-local
+  `node_modules/eslint` that directory is writable and everything works. With none, it
+  falls back to the copy bundled in the **root-owned** global npm prefix, cannot write
+  there, and dies with `Timed out waiting for config` — on *stderr*, which nvim-lint does
+  not read, and with an exit code it ignores. The result would be a TypeScript buffer that
+  looks linted and clean when nothing ran.
+
+  `lua/plugin/lint.lua` therefore sets `ESLINT_D_MISS=ignore`, which turns that case into
+  a clean no-op. Nothing is lost — the bundled eslint cannot resolve a project's own
+  plugins (`eslint-plugin-vue`) either way, so its verdict would be wrong rather than
+  absent. It is the same project-local-or-nothing rule `format.lua` applies to prettier.
+
+  It also means the linting you get is **the repo's own ESLint, running the repo's own
+  config** — which is the point, and is also arbitrary code from a repository you just
+  opened. Upstream is explicit: do not lint an untrusted repository. A `wrap_linter`
+  sandbox recipe (`systemd-run`, bubblewrap) is documented for when that matters.
 
 `.luacheckrc` in the repo root exists for the same reason: without it luacheck reports
 `accessing undefined variable vim` on nearly every line of this config. It sets

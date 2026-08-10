@@ -88,6 +88,26 @@ return {
 			vue             = { "eslint_d", },
 		}
 
+		-- `eslint_d` keeps its daemon token in a dotfile beside whichever eslint it
+		-- resolved. In a project with its own eslint that is `node_modules/eslint`, which
+		-- is writable and works. In a project WITHOUT one it falls back to the copy
+		-- bundled in the global npm prefix -- which `install.sh` had to install with sudo,
+		-- because that prefix is root-owned -- so the daemon cannot write its token and
+		-- dies with `Timed out waiting for config` on stderr. nvim-lint reads stdout and
+		-- ignores the exit code, so that failure arrives as zero diagnostics and no
+		-- message: a TypeScript buffer that looks linted and clean.
+		--
+		-- `ignore` makes eslint_d exit 0 and say nothing in that case instead. Nothing of
+		-- value is lost: the bundled eslint cannot resolve a project's own plugins
+		-- (`eslint-plugin-vue` and friends), so its verdict would have been wrong rather
+		-- than merely missing. This is the same rule `format.lua` applies to prettier --
+		-- the project's own copy or nothing.
+		--
+		-- Set through `vim.env` rather than the linter's own `env` field on purpose: that
+		-- field REPLACES the child environment with `PATH` plus whatever is listed, which
+		-- for a Node program means losing `HOME` and the npm configuration with it.
+		vim.env.ESLINT_D_MISS = "ignore"
+
 		local group = vim.api.nvim_create_augroup("waldo_lint", { clear = true, })
 
 		-- `nvim-lint` ships no trigger of its own, so this autocommand is the whole of it.
