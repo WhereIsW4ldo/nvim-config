@@ -114,10 +114,17 @@ return {
 					-- Floats are ignored on purpose: they cannot hold Neovim open by
 					-- themselves, so they never make the difference here.
 					for _, win in ipairs(vim.api.nvim_list_wins()) do
-						local buf = vim.api.nvim_win_get_buf(win)
+						local buf      = vim.api.nvim_win_get_buf(win)
+						local filetype = vim.bo[buf].filetype
 
+						-- `^snacks_` stands in for "the explorer's own furniture": the list
+						-- and prompt floats, and the `snacks_layout_box` split underneath
+						-- them. `snacks_terminal` matches that prefix too but is content,
+						-- not furniture -- see `lua/plugin/terminal.lua` -- so it has to
+						-- hold Neovim open like any other split. Otherwise closing the last
+						-- file quits, and kills a shell that was still running.
 						if vim.api.nvim_win_get_config(win).relative == ""
-							and not vim.bo[buf].filetype:find("^snacks_") then
+							and (not filetype:find("^snacks_") or filetype == "snacks_terminal") then
 							return
 						end
 					end
