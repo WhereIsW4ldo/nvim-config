@@ -1,5 +1,6 @@
 {
   "agentic.nvim": { "branch": "fix/restore-config-options", "commit": "bb4ad19b8d16ab5a3d12a9f7b1c5096b9a0339b3" },
+  "barbar.nvim": { "branch": "master", "commit": "337ecfadb8bf005050990bf2f624dc4fc828dabd" },
   "blink.cmp": { "branch": "main", "commit": "78336bc89ee5365633bcf754d93df01678b5c08f" },
   "catppuccin": { "branch": "main", "commit": "edefef779ab08ce1a4a404713e3012b0d202bd35" },
   "conform.nvim": { "branch": "master", "commit": "619363c30309d29ffa631e67c8183f2a72caa373" },
