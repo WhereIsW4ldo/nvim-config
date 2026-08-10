@@ -60,7 +60,10 @@ BREW_DEPS=(
 	# 12.0.0 is where `--max-columns-preview` landed, which snacks passes unconditionally.
 	# `--version` prints `ripgrep 14.1.0` on the first line, hence field 2.
 	"rg|12.0.0|ripgrep|rg --version | head -1 | awk '{print \$2}'"
-	# mason shells out to these four to download and unpack language servers.
+	# mason shells out to these four to download and unpack language servers. `curl` earns
+	# its place twice: blink.cmp downloads its prebuilt Rust fuzzy matcher with curl and
+	# git when installed from a release tag, which is what keeps a Rust toolchain optional
+	# for it. Without them it falls back to a slower pure-Lua matcher rather than failing.
 	"curl|-|curl|"
 	"unzip|-|unzip|"
 	# On Linux `tar` is already GNU tar. brew's `gnu-tar` installs `gtar`, not `tar`, so

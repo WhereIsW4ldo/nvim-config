@@ -17,7 +17,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential` |
 | .NET SDK **10+** | The C# server (`roslyn_ls`) — see below | `dotnet --version` |
 | A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
-| `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers | Present on any base Linux except sometimes `unzip` |
+| `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Present on any base Linux except sometimes `unzip` |
 
 ## External dependencies
 
