@@ -57,6 +57,22 @@ out to `cargo metadata` and knows nothing about a project without it; and
 **`terraform`**, because HCL formatting goes through the CLI rather than the server — see
 below.
 
+One of them needs a setting, in `lua/plugin/terraform.lua`:
+
+- **`terraformls` indexes `.terraform/modules` and starves itself doing it.** After a
+  `terraform init` the workspace root contains a vendored copy of every module the
+  configuration pulls in — ~20k `.tf` files in this machine's work repos — and the server
+  handles RPC serially, so indexing jobs queue in front of every real request. Measured
+  against `Communication-Product/product`, `textDocument/references` took **4279ms** once
+  settled and `textDocument/codeLens` never answered at all, timing out at 30s on every
+  buffer enter. `init_options.indexing.ignorePaths = { ".terraform" }` brings those to
+  **152ms** and **895ms**. Resource attribute completion, resource type completion, hover
+  and document symbols are unchanged — provider schemas do not come from the module walker,
+  and `.terraform/providers` is 1.4 GB of that 1.5 GB directory. Reach for the setting again
+  if you need completion for the inputs of a *registry*-sourced remote module, which is the
+  one thing it can cost. Note that `indexing.ignoreDirectoryNames` is not the knob despite
+  the name: it rejects `.terraform` outright (error -32098) and the server fails to start.
+
 Three gaps worth knowing about:
 
 - **`sqls` says `no database connection` until you give it one.** It still parses, formats
