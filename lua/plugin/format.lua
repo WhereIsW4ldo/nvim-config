@@ -5,9 +5,8 @@
 -- is attached, which is what `lsp_format = "fallback"` means. So Lua is formatted by
 -- `lua_ls` -- the EmmyLua engine that reads `.editorconfig` and therefore already agrees
 -- with this repo's own style -- and NOT by stylua, which would silently disagree. Same
--- shape for Terraform (`terraformls` shells out to `terraform fmt`), Rust
--- (`rust_analyzer` -> rustfmt), C#, SQL and Dockerfiles: nothing to list, they are the
--- fallback.
+-- shape for Rust (`rust_analyzer` -> rustfmt), C#, SQL and Dockerfiles: nothing to list,
+-- they are the fallback.
 --
 -- prettier is where the server loses. `marksman` implements no formatting at all, so
 -- markdown would otherwise get nothing; and `vtsls` formats with tsserver's own
@@ -16,7 +15,32 @@
 -- loops over *every* attached client advertising formatting, and a Vue SFC has two
 -- (`vue_ls` and `vtsls`), which would take turns rewriting the buffer.
 --
--- `prettierd` is an external dependency and lives in `install.sh`'s NPM_DEPS.
+-- Terraform is the third case, and it is neither of those: the server formats correctly,
+-- it just cannot be relied on to answer in time. `terraform-ls` handles RPC serially, and
+-- it indexes every module under the workspace root -- which includes `.terraform/modules`,
+-- the vendored copy of every module `terraform init` downloaded. In this machine's work
+-- repos that is ~20k `.tf` files and 1.5 GB, so the request queue reaches 600+ entries and
+-- single requests take up to 9s. A `textDocument/formatting` request lands behind that
+-- backlog, conform's `timeout_ms` expires, Neovim sends `$/cancelRequest`, and the server
+-- answers `[-32097] context canceled` -- surfacing as a `[LSP][terraformls] timeout`
+-- notification on every save. Formatting itself was never slow: the server's own log says
+-- `Finished 'terraform fmt' in 84ms`, and the bare CLI does it in 30ms.
+--
+-- Naming `terraform_fmt` here takes formatting off that queue entirely. It runs
+-- `terraform fmt -no-color -` on the buffer over stdin -- the same `terraform fmt` the
+-- server would have shelled out to, minus the server. The indexing cost is unavoidable and
+-- still shows up in completion and hover latency; `indexing.ignoreDirectoryNames` is NOT a
+-- way out, as `terraform-ls` rejects `.terraform` by name (`cannot ignore directory
+-- ".terraform"`, error -32098) and refuses to initialise at all.
+--
+-- `terraform-vars` is the filetype for `.tfvars`, which is HCL and which the server would
+-- also have formatted, so it needs the same treatment rather than being left on a fallback
+-- that times out.
+--
+-- `prettierd` is an external dependency and lives in `install.sh`'s NPM_DEPS. `terraform`
+-- is one too and lives in BREW_DEPS -- it was already required there for the server's sake,
+-- and is now called directly.
+local terraform_fmt = { "terraform_fmt", }
 
 -- `prettierd` is the same prettier behind a daemon, so it pays its startup cost once per
 -- session instead of once per save. Plain `prettier` follows it as the fallback: conform
@@ -34,7 +58,7 @@ return {
 	event = "BufWritePre",
 	cmd   = "ConformInfo",
 
-	keys = {
+	keys  = {
 		{
 			"<leader>F",
 			function() require("conform").format({ async = true, }) end,
@@ -51,28 +75,33 @@ return {
 
 	---@module "conform"
 	---@type conform.setupOpts
-	opts = {
+	opts  = {
 		-- Only filetypes that need a CLI formatter appear here. An absent filetype is not
 		-- an omission -- it is the fallback to its language server. A filetype with
 		-- neither is a silent no-op, not a warning, because conform only complains when
 		-- formatters were configured and then turned out to be missing.
 		formatters_by_ft = {
-			markdown        = prettier,
+			markdown           = prettier,
 
-			vue             = prettier,
-			javascript      = prettier,
-			javascriptreact = prettier,
-			typescript      = prettier,
-			typescriptreact = prettier,
+			-- Not here for style -- see the header. This is the one entry whose reason is
+			-- latency: the server's answer is correct and simply arrives too late.
+			terraform          = terraform_fmt,
+			["terraform-vars"] = terraform_fmt,
+
+			vue                = prettier,
+			javascript         = prettier,
+			javascriptreact    = prettier,
+			typescript         = prettier,
+			typescriptreact    = prettier,
 
 			-- The file formats the languages above drag in: the `<style>` and
 			-- `<template>` halves of a Vue SFC, and the config files beside them.
-			css             = prettier,
-			scss            = prettier,
-			html            = prettier,
-			json            = prettier,
-			jsonc           = prettier,
-			yaml            = prettier,
+			css                = prettier,
+			scss               = prettier,
+			html               = prettier,
+			json               = prettier,
+			jsonc              = prettier,
+			yaml               = prettier,
 		},
 
 		-- Applies to `conform.format()` and to format-on-save alike, so the fallback rule
@@ -98,7 +127,7 @@ return {
 	-- Commands, not keymaps, and in `init` rather than `config`: both only set the
 	-- variable that `format_on_save` reads, so they should work before conform has ever
 	-- been loaded -- including in a session where nothing has been written yet.
-	init = function()
+	init  = function()
 		vim.api.nvim_create_user_command("FormatDisable", function(args)
 			if args.bang then
 				vim.b.disable_autoformat = true

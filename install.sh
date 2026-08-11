@@ -53,14 +53,16 @@ BREW_DEPS=(
 	# new enough to build the project is new enough here. `rustup` is the better install
 	# than brew's `rust` if you want per-project toolchains; either satisfies this.
 	"cargo|-|rust|"
-	# Terraform, for `terraformls` -- which does not format HCL itself. Its
-	# `textDocument/formatting` handler builds a TerraformExecutor and runs the real
-	# `terraform fmt` through it, so without this binary Terraform files are the one
-	# filetype in `lua/plugin/format.lua`'s LSP-fallback group that silently formats to
-	# nothing. Presence-only: `terraform fmt` predates every version anyone still runs.
-	# NOT a Homebrew core formula -- core dropped it after the BUSL relicense, so this is
-	# tap-qualified and `brew install` taps it on demand. `opentofu` is the core-formula
-	# alternative but `terraform-ls` execs `terraform` by name, so it is not a substitute.
+	# Terraform, called directly by conform's `terraform_fmt` -- `lua/plugin/format.lua`
+	# formats HCL with `terraform fmt -no-color -` rather than through `terraformls`, which
+	# would only have shelled out to the same binary and cannot be relied on to answer
+	# before conform's timeout. Without this, Terraform and `.tfvars` files do not format.
+	# `terraformls` needs it too, for the `textDocument/formatting` it no longer serves here
+	# but still advertises. Presence-only: `terraform fmt` predates every version anyone
+	# still runs. NOT a Homebrew core formula -- core dropped it after the BUSL relicense,
+	# so this is tap-qualified and `brew install` taps it on demand. `opentofu` is the
+	# core-formula alternative but `terraform-ls` execs `terraform` by name, and conform
+	# resolves `tofu` through a separate `tofu_fmt`, so it is not a drop-in substitute.
 	"terraform|-|hashicorp/tap/terraform|"
 	# snacks.explorer's search box and its `<leader>/` grep-in-directory action shell out
 	# here. The file finder degrades (fd -> rg -> find), but grep does not: `rg` is

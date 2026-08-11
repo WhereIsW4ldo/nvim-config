@@ -54,7 +54,8 @@ Three of them need a toolchain `install.sh` now installs: **`dotnet`**, because
 `roslyn_ls` is distributed as a NuGet package that mason installs by spawning `dotnet`,
 and the server is a `net10.0` assembly; **`cargo`**, because `rust_analyzer` shells
 out to `cargo metadata` and knows nothing about a project without it; and
-**`terraform`**, because `terraformls` does not format HCL itself — see below.
+**`terraform`**, because HCL formatting goes through the CLI rather than the server — see
+below.
 
 Three gaps worth knowing about:
 
@@ -73,8 +74,9 @@ Three gaps worth knowing about:
 one beats the language server. That is prettier, for markdown (`marksman` implements no
 formatting at all) and for the Vue/TypeScript family plus the JSON/YAML/CSS files around
 them (`vtsls` formats with tsserver's formatter, which is not prettier's style and ignores
-a project's `.prettierrc`). Everything else — Lua, Terraform, C#, Rust, SQL, Dockerfiles —
-falls through to its server and needs nothing here.
+a project's `.prettierrc`). Terraform is a separate case, on latency rather than style —
+see below. Everything else — Lua, C#, Rust, SQL, Dockerfiles — falls through to its server
+and needs nothing here.
 
 ```sh
 npm i -g @fsouza/prettierd@0.29.0
@@ -98,11 +100,21 @@ command -v prettierd && prettierd --version
 `:ConformInfo` is the in-editor version: it lists which formatters resolved for the
 current buffer and where the log file is.
 
-### `terraform` — HCL formatting, required by `terraformls`
+### `terraform` — HCL formatting, required by `lua/plugin/format.lua`
 
-`terraformls` does not format HCL. Its `textDocument/formatting` handler builds a
-`TerraformExecutor` and runs the real `terraform fmt` through it, so without the binary
-Terraform is the one filetype in the LSP-fallback group that formats to nothing.
+conform calls it directly, as `terraform fmt -no-color -`, for `terraform` and
+`terraform-vars` buffers. It is not on the LSP-fallback path: `terraformls` does not format
+HCL itself — its `textDocument/formatting` handler builds a `TerraformExecutor` and runs
+this same binary through it — but it handles RPC serially while indexing every module under
+the workspace root, `.terraform/modules` included. Against a repo whose module cache is
+~20k `.tf` files, the queue reaches 600+ entries and single requests take up to 9s, so
+format-on-save timed out and reported `[LSP][terraformls] timeout` on every write. Calling
+the CLI takes ~30ms and does not queue. Without this binary, HCL does not format at all.
+
+Note that `indexing.ignoreDirectoryNames` is not a way to shrink that index:
+`terraform-ls` rejects `.terraform` by name (`cannot ignore directory ".terraform"`, error
+-32098) and fails to initialise, so the completion and hover latency is a fixed cost of
+pointing the server at a large initialised workspace.
 
 **Not a Homebrew core formula** — core dropped `terraform` after HashiCorp's BUSL
 relicense, so `install.sh` uses the official tap and `brew install` taps it on demand:
