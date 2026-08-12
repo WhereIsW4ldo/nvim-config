@@ -38,5 +38,24 @@ map("t", "<C-j>", "<C-\\><C-n><C-w>j", { desc = "Window: go down (from terminal)
 map("t", "<C-k>", "<C-\\><C-n><C-w>k", { desc = "Window: go up (from terminal)", })
 map("t", "<C-l>", "<C-\\><C-n><C-w>l", { desc = "Window: go right (from terminal)", })
 
+-- Ctrl-Backspace deletes the word before the cursor, the way the shell does.
+--
+-- It needs two spellings because the wire encoding differs. Terminals that speak the
+-- kitty keyboard protocol -- ghostty here, also kitty, wezterm, foot -- send a distinct
+-- code for Ctrl-BS and Neovim reports it as `<C-BS>`. Everything else collapses it onto
+-- 0x08, which arrives as `<C-h>`: plain xterm, a `TERM=screen` tmux without passthrough,
+-- an ssh session into a dumber terminal.
+--
+-- Only insert and command-line mode get both. Normal and terminal mode already spend
+-- `<C-h>` on window navigation above, and that is the more valuable binding there.
+for _, key in ipairs({ "<C-BS>", "<C-h>", }) do
+	map("i", key, "<C-w>", { desc = "Delete word before cursor", })
+	map("c", key, "<C-w>", { desc = "Delete word before cursor", })
+end
+
+-- Inside a terminal buffer nothing is deleted by Neovim; 0x17 (`<C-w>`) goes down the pty
+-- and the shell's own backward-kill-word does the work.
+map("t", "<C-BS>", "<C-w>", { desc = "Delete word before cursor (shell)", })
+
 -- Plugin keymaps do NOT belong here. Declare them in the plugin's own spec under
 -- `keys = { ... }` so lazy.nvim can defer loading the plugin until first use.
