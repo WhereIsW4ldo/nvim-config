@@ -54,6 +54,12 @@ opt.smartcase = true
 
 opt.scrolloff = 8
 
+-- One line per wheel notch instead of Neovim's default `ver:3`. Modern mice and
+-- touchpads already emit a burst of wheel events per physical flick, and multiplying
+-- each of those by three sends the view flying. The horizontal half drops from 6 to 2
+-- for the same reason.
+opt.mousescroll = { "ver:1", "hor:2", }
+
 -- Folding is driven by tree-sitter, which sets `foldmethod` and `foldexpr` per buffer in
 -- `lua/plugin/treesitter.lua`. These two are global because they are safe whether or not
 -- a buffer has a parser.
