@@ -11,7 +11,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 |---|---|---|
 | Neovim **0.12+** | Config targets modern APIs (`vim.lsp.config`, `vim.hl`, built-in EditorConfig) | `nvim --version` |
 | Git **2.19+** | lazy.nvim uses partial clones (`--filter=blob:none`) | |
-| Node **22+** | Needed by the ACP provider below | |
+| Node **22+** | The global npm packages below, and the Claude Code CLI on a fresh machine | |
 | lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
 | tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential` |
@@ -254,42 +254,87 @@ Verify:
 `<leader>l` re-runs the linters for the current buffer, which is the quickest way to
 confirm a freshly installed one is now being found.
 
-### `claude-agent-acp` — required by `lua/plugin/ai.lua`
+### `claude` — required by `lua/plugin/ai.lua`
 
-[agentic.nvim](https://github.com/carlos-algms/agentic.nvim) talks to Claude Code over
-the Agent Client Protocol and deliberately does not manage provider binaries itself.
+[claudecode.nvim](https://github.com/coder/claudecode.nvim) is pure Lua and installs
+nothing itself. It stands up a WebSocket server, writes `~/.claude/ide/<port>.lock`, and
+launches the Claude Code CLI pointed at it — the same discovery handshake Anthropic's own
+VS Code and JetBrains extensions use. The CLI is therefore the *only* external dependency,
+and without it `:ClaudeCode` opens a terminal that immediately exits.
 
-```sh
-npm i -g @agentclientprotocol/claude-agent-acp
-```
-
-Needs `sudo` if your npm prefix is root-owned (check with `npm root -g`). Pinning the
-version is recommended given [npm supply-chain
-attacks](https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack):
+Two install routes, both fine:
 
 ```sh
-npm i -g @agentclientprotocol/claude-agent-acp@0.66.0
+curl -fsSL https://claude.ai/install.sh | bash    # Anthropic's native installer -> ~/.local/bin
+npm i -g @anthropic-ai/claude-code@2.1.231        # what install.sh uses
 ```
+
+`install.sh` takes the npm route because Homebrew ships `claude-code` as a **cask**, and
+casks are macOS-only — `brew install claude-code` fails outright on Linux. It skips the
+entry entirely when `claude` is already on `PATH`, so an existing install of either shape
+is left alone rather than shadowed. The pinned version is a floor for a fresh machine, not
+a ceiling: Claude Code updates itself after first run, so that number goes stale by design.
 
 Notes:
 
-- Upstream recommends `pnpm` because nvm/fnm keep **per-Node-version** global
-  directories, so `npm i -g` packages disappear when you switch versions. Irrelevant if
-  your globals live in a shared prefix (e.g. under `n`) — plain `npm` is fine there.
-- Upstream also offers a "download binary" option, but the releases carry **no binary
-  assets** (checked through v0.66.0), so the npm registry is the only working route.
 - Authentication reuses your existing `claude /login` session. No `ANTHROPIC_API_KEY`.
+- If you have run `claude migrate-installer`, the binary moves to `~/.claude/local/claude`
+  and is reached through a shell alias that Neovim does not see. Set
+  `terminal_cmd = "~/.claude/local/claude"` in `lua/plugin/ai.lua`'s `opts` if so.
+  `claude doctor` reports which installation you have.
 
 Verify:
 
 ```sh
-command -v claude-agent-acp && claude-agent-acp --version
+command -v claude && claude --version
 ```
 
-### `wl-clipboard` — clipboard image paste, Wayland only
+`:ClaudeCodeStatus` is the in-editor version — it reports whether the WebSocket server is
+up and whether a CLI has connected to it.
 
-agentic.nvim's image paste (`<C-v>` in insert mode, `<localleader>p` in normal) shells
-out to `wl-paste`. Without it, image paste is the only thing that stops working.
+#### Why not ACP
+
+This replaced [agentic.nvim](https://github.com/carlos-algms/agentic.nvim), which drove the
+same CLI over the **Agent Client Protocol**, through the
+`@agentclientprotocol/claude-agent-acp` npm bridge. ACP is vendor-neutral, so it carries
+roughly the intersection of what every agent does rather than everything Claude Code does,
+and the bridge lags each CLI release.
+agentic's own tracker shows the shape of it: restored sessions losing their mode and model
+([#310](https://github.com/carlos-algms/agentic.nvim/issues/310)), and no way to surface
+Claude Code's `AskUserQuestion` because ACP does not model it
+([#274](https://github.com/carlos-algms/agentic.nvim/issues/274)).
+
+Here the real CLI runs in the terminal, so there is nothing to fall behind on — mode
+cycling, `/model`, skills and whatever ships next all work because none of it is
+reimplemented. The npm bridge is gone rather than replaced.
+
+What that costs, since all three were configured deliberately before:
+
+- **One session at a time.** agentic ran several concurrently and kept them alive behind a
+  closed window. `<leader>ar` picks a *different* session rather than adding one. Tracked
+  upstream but unimplemented ([#187](https://github.com/coder/claudecode.nvim/issues/187),
+  [#177](https://github.com/coder/claudecode.nvim/issues/177),
+  [#147](https://github.com/coder/claudecode.nvim/issues/147)).
+- **No Neovim-native chat buffer,** so no foldable tool calls — the CLI renders its own
+  output. Diffs are the exception: those come over the protocol and open as real Neovim
+  windows, accepted with `:w` and rejected with `:q`.
+- **Model switching is launch-time.** `<leader>am` restarts the CLI with `--model`;
+  `/model` inside the terminal is the live route.
+
+Diagnostics are no longer pushed either, which is a change of direction rather than a loss:
+Claude pulls them itself through the MCP `getDiagnostics` tool whenever it wants them.
+
+### `wl-clipboard` — the system clipboard, Wayland only
+
+Not a plugin dependency — an editor one. `lua/config/vim.lua` sets
+`clipboard = "unnamedplus"`, so every yank and put goes through the `+` register, and on a
+Wayland session `wl-copy`/`wl-paste` is the first provider Neovim looks for. Without it
+Neovim falls back to the X11 tools (`xclip`, `xsel`) via XWayland if they happen to be
+installed, and to nothing at all if they are not — in which case yanking silently does not
+reach any other application. `:checkhealth provider` reports which one was picked.
+
+(It was previously listed for agentic.nvim's image paste, which shelled out to `wl-paste`
+directly. That plugin is gone; the clipboard reason is the one that was always underneath.)
 
 ```sh
 brew install wl-clipboard          # or: sudo apt install wl-clipboard
@@ -384,7 +429,10 @@ first section dropped when the window narrows past 120 columns.
 1. **`~/.claude.json`'s `cachedUsageUtilization`** — what the CLI persists after its own
    fetches. Free, needs no token, available immediately at startup. But it goes stale: the
    CLI will not rewrite it more often than every 5 minutes, treats it as valid for a full
-   hour, and an ACP-only session may not refresh it at all.
+   hour, and only a real CLI session ever writes it. That last point got better with the
+   move off ACP: `lua/plugin/ai.lua` now launches the actual `claude` binary in a terminal,
+   so an editing session keeps the cache warm where an ACP-only one might never have
+   touched it.
 2. **`GET https://api.anthropic.com/api/oauth/usage`** — the endpoint the CLI's own
    `fetchUtilization` calls, authenticated with the OAuth token in
    `~/.claude/.credentials.json` (handed to `curl` over stdin via `--config -`, so it never
@@ -410,8 +458,11 @@ older than 15 minutes is dimmed whatever it says.
 The obvious route does not work: those percentages reach a **terminal** statusline through
 the CLI's stdin payload (`rate_limits.five_hour.used_percentage`) and through nothing else.
 Hook payloads carry only `session_id`, `transcript_path`, `cwd`, `prompt_id`,
-`permission_mode`, `agent_id`, `agent_type` and `effort`. Sessions here run over ACP, which
-never renders a statusline, so there is no payload to read.
+`permission_mode`, `agent_id`, `agent_type` and `effort`. That payload goes to whatever
+`statusLine` command is configured in Claude's own `settings.json` — a separate process,
+writing to the CLI's own bar inside its terminal, with no route into Neovim's. So even now
+that a real CLI session runs in a split, the numbers still have to be fetched here rather
+than received.
 
 Two things to know:
 
@@ -467,13 +518,19 @@ Two settings are not the defaults, both deliberate:
 
 ## Terminal key support
 
-One keybinding needs a terminal that implements the **kitty keyboard protocol**:
-`<C-CR>` submits the agentic prompt, and legacy terminals cannot encode it — `Ctrl+Enter`
-sends the same `0x0D` byte as plain `Enter`.
+**Nothing here requires a particular terminal any more.** `<C-CR>` used to — it submitted
+the agentic.nvim prompt, and legacy terminals cannot encode it, since `Ctrl+Enter` sends the
+same `0x0D` byte as plain `Enter`. That prompt buffer is gone with the move to
+claudecode.nvim, which types into the CLI's own TUI where plain `Enter` submits.
 
-Ghostty, Kitty, WezTerm and foot support the protocol; Neovim 0.12 negotiates it
-automatically. To check, press `Ctrl-V` then `Ctrl+Enter` in insert mode — a distinct
-code means it works, a plain `^M` means it does not. Fall back to `<C-s>` if so.
+The one key still sensitive to the **kitty keyboard protocol** is `<C-BS>`, and it is
+already handled: `lua/config/keymap.lua` binds both spellings, because protocol-speaking
+terminals (ghostty here, also kitty, wezterm, foot) report `<C-BS>` while everything else
+collapses it onto `0x08` and arrives as `<C-h>`. Either way the key works.
+
+To see which kind you are in, press `Ctrl-V` then the key in insert mode — a distinct code
+means the protocol is negotiated, a legacy byte means it is not. Neovim 0.12 negotiates
+automatically where it can.
 
 ## Install
 

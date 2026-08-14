@@ -2,8 +2,9 @@
 --
 -- Both defaults render in the cmdline as a numbered `inputlist` prompt (see
 -- `runtime/lua/vim/ui.lua`), which is still the case on 0.12. Overriding them here
--- fixes every caller at once -- `agentic.nvim`'s agent-mode and session pickers, LSP
--- code actions, `vim.lsp.buf.rename`, and anything else that goes through `vim.ui`.
+-- fixes every caller at once -- claudecode.nvim's model picker (`vim.ui.select` in its
+-- `init.lua`), LSP code actions, `vim.lsp.buf.rename`, and anything else that goes
+-- through `vim.ui`.
 --
 -- Chosen over `stevearc/dressing.nvim`, which was the standard answer until it was
 -- archived in Feb 2025; its README now points here explicitly. `fzf-lua` and

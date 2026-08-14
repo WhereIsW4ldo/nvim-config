@@ -110,7 +110,21 @@ BREW_DEPS=(
 # (see https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack), so bump
 # these consciously rather than floating on latest.
 NPM_DEPS=(
-	"claude-agent-acp|@agentclientprotocol/claude-agent-acp@0.66.0"
+	# The Claude Code CLI -- the whole of what `lua/plugin/ai.lua` needs. claudecode.nvim
+	# is pure Lua and installs nothing itself; it stands up a WebSocket server and launches
+	# this binary pointed at it. Without it the plugin loads and `:ClaudeCode` opens a
+	# terminal that immediately exits.
+	#
+	# npm rather than BREW_DEPS because Homebrew ships `claude-code` as a **cask**, and
+	# casks are macOS-only -- `brew install claude-code` fails outright on Linux, which is
+	# the supported platform here. Anthropic's own `curl -fsSL https://claude.ai/install.sh`
+	# native installer is the other route and puts it in `~/.local/bin`; this script skips
+	# the entry entirely when `claude` is already on PATH, so an existing install of either
+	# shape is left alone rather than shadowed.
+	#
+	# The pin is a floor for a fresh machine, not a ceiling: Claude Code updates itself
+	# after first run, so this number goes stale by design and is not worth chasing.
+	"claude|@anthropic-ai/claude-code@2.1.231"
 	# prettier, as a daemon, for conform.nvim -- see `lua/plugin/format.lua`. It bundles
 	# its own prettier (a dependency of the package), so this one entry covers markdown,
 	# Vue, TypeScript and the JSON/YAML/CSS files around them. `prettierd` is the binary
@@ -381,7 +395,7 @@ ok "lazy.nvim reports $count plugin(s)"
 cat <<-EOF
 
 	${BOLD}Done.${RESET} Next:
-	  - run ${BOLD}claude /login${RESET} if you have not (the ACP provider reuses that session)
+	  - run ${BOLD}claude /login${RESET} if you have not (the plugin reuses that session)
 	  - open ${BOLD}nvim${RESET} and check ${BOLD}:Lazy${RESET}
-	  - ${BOLD}<leader>aa${RESET} toggles the Claude Code chat
+	  - ${BOLD}<leader>aa${RESET} toggles the Claude Code terminal
 EOF
