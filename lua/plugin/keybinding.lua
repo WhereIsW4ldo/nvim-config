@@ -18,6 +18,7 @@ return {
 		spec = {
 			{ "<leader>a", group = "AI", },
 			{ "<leader>d", group = "Diagnostics", },
+			{ "<leader>D", group = "Database", },
 			{ "<leader>f", group = "Find", },
 			{ "<leader>g", group = "Git", },
 		},

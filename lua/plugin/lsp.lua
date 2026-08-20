@@ -55,7 +55,6 @@ return {
 				"vtsls",         -- also serves the TypeScript half of a Vue SFC
 				"vue_ls",
 				"docker_language_server",
-				"sqls",
 				"rust_analyzer", -- needs `cargo` on PATH to load a workspace
 			},
 

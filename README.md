@@ -47,7 +47,6 @@ not maintaining a server list in two places.
 | Markdown | `marksman` | — |
 | Vue + TypeScript | `vue_ls` + `vtsls` | `ts_ls`. Since Vue language server v3 there is no takeover mode, and both upstreams point at `vtsls`; lspconfig warns against enabling `ts_ls` alongside it. |
 | Docker | `docker_language_server` | `dockerls` + `docker_compose_language_service`, which take two servers to cover the same ground. Docker's own binary also handles Bake. |
-| SQL | `sqls` | `sqlls`, which is simply broken: sql-language-server 1.7.1 reaches into a `vscode-languageserver-protocol` subpath that modern Node blocks via `exports`, so it exits 1 on startup. |
 | Rust | `rust_analyzer` | — |
 
 Three of them need a toolchain `install.sh` now installs: **`dotnet`**, because
@@ -73,10 +72,24 @@ One of them needs a setting, in `lua/plugin/terraform.lua`:
   one thing it can cost. Note that `indexing.ignoreDirectoryNames` is not the knob despite
   the name: it rejects `.terraform` outright (error -32098) and the server fails to start.
 
-Three gaps worth knowing about:
+**SQL deliberately has no language server.** `sqls` was installed here and has been
+retired — it earned its place on nothing measurable. Probed against a live buffer it
+returned **one** completion item (`SELECT`, on a bare `SEL`) and **zero** at column
+positions inside a real query, because everything beyond keywords needs a database
+connection it could never open for Azure: it links the deprecated `denisenkom/go-mssqldb`,
+which has no Entra token path. It also contributed no diagnostics — every one of them comes
+from `sqlfluff`. What it did do was format, with tabs, against `sqlfluff`'s indentation
+rule, so every formatted buffer came back with four fresh `LT02` warnings. Formatting now
+goes to `sqlfluff` itself (see `lua/plugin/format.lua`), so the tool that formats and the
+tool that judges are the same one and cannot disagree by construction. `sqlls` was never an option:
+sql-language-server 1.7.1 reaches into a `vscode-languageserver-protocol` subpath that
+modern Node blocks via `exports`, so it exits 1 on startup.
 
-- **`sqls` says `no database connection` until you give it one.** It still parses, formats
-  and completes keywords; table and column completion needs a connection in a `config.yml`.
+Schema-aware SQL completion is not lost with it — it comes from `vim-dadbod-completion`,
+and unlike `sqls` it covers the Azure connection too. See below.
+
+Two more gaps worth knowing about:
+
 - **Razor / `.cshtml` is not supported.** `roslyn_ls` reports the request and points at
   [roslyn.nvim](https://github.com/seblyng/roslyn.nvim), which is what you would add for it.
 - **Compose files need a filetype Neovim does not detect.** `docker_language_server`
@@ -166,7 +179,7 @@ rules, `marksman` resolves Markdown links and holds no opinion on heading style.
 | `terraform` | `tflint` | Provider-specific and best-practice rules; `terraformls` only validates. |
 | `markdown` | `markdownlint-cli2` | Heading/list/formatting style. `marksman` is links and references only. |
 | `dockerfile` | `hadolint` | Pinned base tags, `apt-get upgrade`, shell-form pitfalls. |
-| `sql` | `sqlfluff` | Dialect-aware style rules on top of `sqls`' completion. |
+| `sql` | `sqlfluff` | Dialect-aware style rules. Also the formatter now that `sqls` is gone — see above. |
 | `sh` | `shellcheck` | Everything — this is the one filetype here with **no** language server at all. |
 | `vue`, `typescript`, `typescriptreact`, `javascript`, `javascriptreact` | `eslint_d` | The project's own rules and plugin rules (`eslint-plugin-vue`), which `vtsls` and `vue_ls` never see. |
 
@@ -218,6 +231,44 @@ npm i -g eslint_d@15.0.3 markdownlint-cli2@0.23.2
   Mind the identifiers: they are **`tsql`** and **`postgres`**. `mssql` and `postgresql`
   are not sqlfluff dialects and will error. `sqlfluff dialects` lists all of them.
 
+  The same file also sets the indent width, non-default at **two** spaces where sqlfluff
+  ships four:
+
+  ```ini
+  [sqlfluff:indentation]
+  tab_space_size = 2
+  ```
+
+  This is not only a lint setting. Since `sqlfluff fix` is what conform runs to *format*
+  SQL, it governs the formatter too — which is the point of having retired `sqls`.
+
+  Because it is both linter and formatter, one wrinkle needs handling in
+  `lua/plugin/format.lua`: `sqlfluff fix` **exits 1 whenever any unfixable violation
+  remains**, and conform discards a formatter's output on a non-zero exit. The rule that
+  trips it constantly is `AM04` — *"query produces an unknown number of result columns"* —
+  which fires on `SELECT *` and is unfixable by definition. So the formatter is configured
+  with `exit_codes = { 0, 1 }`. That is safe rather than merely convenient: sqlfluff sends
+  every diagnostic to stderr and puts only SQL on stdout — reformatted where it could fix
+  something, and the input unchanged where the buffer does not parse at all.
+
+  If the `AM04` *diagnostic* is also unwanted — it is noise for ad-hoc querying, where
+  `SELECT *` is the point — exclude it machine-wide:
+
+  ```ini
+  [sqlfluff]
+  exclude_rules = AM04
+  ```
+
+- **Lint-only filetypes need the inline renderer told to attach.**
+  `tiny-inline-diagnostic.nvim` defaults to attaching on `LspAttach` alone, which silently
+  means "only buffers with a language server". `sql` (since `sqls` was retired) and `sh`
+  (which never had one) get their diagnostics from nvim-lint instead, so the plugin never
+  attached and both showed a gutter sign whose message could not be read anywhere — moving
+  onto the line did nothing. `lua/plugin/diagnostic.lua` sets
+  `overwrite_events = { "LspAttach", "BufEnter" }` to fix it. `BufEnter` and not
+  `BufReadPost`, because that has already fired for the file named on the command line by
+  the time the plugin loads on `VeryLazy`.
+
 - **`tflint` does not read the buffer.** Upstream's definition passes `--recursive` with
   `stdin = false`, so it lints the directory *as it is on disk*. Unsaved changes are
   invisible to it, and its diagnostics can name files other than the one you are in.
@@ -253,6 +304,76 @@ Verify:
 
 `<leader>l` re-runs the linters for the current buffer, which is the quickest way to
 confirm a freshly installed one is now being found.
+
+### `sqlcmd` and `az` — required by `lua/plugin/database.lua`
+
+[vim-dadbod](https://github.com/tpope/vim-dadbod) has no SQL Server driver of its own: its
+adapter builds an argv and shells out to `sqlcmd` for every query, and again for the schema
+introspection that feeds completion. Without it the drawer opens, connects to nothing, and
+reports a command-not-found.
+
+```sh
+brew install sqlcmd azure-cli
+```
+
+**It has to be [`microsoft/go-sqlcmd`](https://github.com/microsoft/go-sqlcmd), the Go
+rewrite — not the legacy ODBC `sqlcmd` from `mssql-tools`/`mssql-tools18`, which carries the
+same command name.** Only the rewrite implements `--authentication-method`, and that one
+flag is the whole reason this stack was chosen: it is what lets an Azure SQL connection
+authenticate as you without a password.
+
+The two connection shapes, added with `:DBUIAddConnection`:
+
+```
+sqlserver://sa:PASSWORD@localhost:1433/DB?trustServerCertificate=true
+sqlserver://SERVER.database.windows.net/DB?authentication=ActiveDirectoryAzCli&encrypt=true
+```
+
+`trustServerCertificate=true` becomes `-C` and is not optional for a Docker instance —
+go-sqlcmd negotiates encryption by default and the container's certificate is self-signed.
+`authentication=ActiveDirectoryAzCli` is passed straight through to `--authentication-method`,
+which resolves to `azidentity.NewAzureCLICredential` and spawns `az account get-access-token`.
+That is why **`az` is a dependency too, and why `az login` has to be current** — the token is
+fetched per connection and never stored. Neither URL is committed: `:DBUIAddConnection` writes
+to `~/.local/share/db_ui`, outside this repository.
+
+Verify:
+
+```sh
+sqlcmd --version     # must print v1.x — the legacy binary has no --version flag at all
+az account show      # must succeed, or the Azure connection cannot authenticate
+```
+
+`:DBUILastQueryInfo` is the in-editor version: it prints the exact command that was run.
+
+#### Result formatting, and a script that runs before every query
+
+dadbod builds a fixed argv and passes `sqlcmd` no formatting flags, with no hook to add
+any. It does not need one: go-sqlcmd reads its scripting variables from the environment
+(`InitializeVariables(args.useEnvVars())`, true unless `-X` is passed, which dadbod never
+does), so `lua/plugin/database.lua` sets them with `vim.env` and needs neither a `$PATH`
+wrapper script nor a `g:db_adapter_sqlserver` override — the two answers the upstream
+issue threads settle on.
+
+| Variable | Set to | Default | Why |
+|---|---|---|---|
+| `SQLCMDMAXFIXEDTYPEWIDTH` | `30` | `0` (unlimited) | The one that matters. Governs **declared-width** types — `char(n)`, `varchar(n)`, `nvarchar(n)` — which are otherwise padded to their declared width, so a `varchar(255)` column is 255 characters wide even when no row is. |
+| `SQLCMDMAXVARTYPEWIDTH` | `100` | `256` | The one whose name suggests it, and the lesser half: only the `(max)` types plus `xml`/`text`/`image`. |
+| `SQLCMDINI` | `sql/preamble.sql` | unset | A script run before every query. |
+
+`sql/preamble.sql` is in this repository, tracked, and ships commented out. Uncomment what
+you want — `SET NOCOUNT ON;` to drop the `(N rows affected)` lines, or the isolation-level
+and lock-timeout pair for exploring a production database without blocking anyone. Two
+rules apply: it runs before **every** `sqlcmd` invocation, including the schema
+introspection behind completion, and it must therefore produce **no output** — a stray
+`PRINT` corrupts the table list rather than merely looking untidy.
+
+Note `vim.env` is Neovim's whole environment, so a `sqlcmd` run by hand in the built-in
+terminal inherits all three too.
+
+Vertical (one column per line) output is **not** available: `<Plug>(DBUI_ToggleResultLayout)`
+is Postgres/MySQL/BigQuery only — `autoload/db_ui/schemas.vim` gives those a `layout_flag`
+and gives SQL Server none.
 
 ### `claude` — required by `lua/plugin/ai.lua`
 

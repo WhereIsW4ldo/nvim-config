@@ -49,6 +49,13 @@ local terraform_fmt = { "terraform_fmt", }
 -- than a second pass over the same buffer.
 local prettier = { "prettierd", "prettier", stop_after_first = true, }
 
+-- SQL, which used to fall through to `sqls` and no longer can -- see `lua/plugin/lsp.lua`
+-- for why that server was retired. sqlfluff was already installed as this config's SQL
+-- linter, so formatting now comes from the same tool that judges the result. That is the
+-- actual win: `sqls` formatted with tabs while sqlfluff's `tsql` rules demand four spaces,
+-- so every formatted buffer used to come back with four fresh `LT02` warnings.
+local sqlfluff = { "sqlfluff", }
+
 return {
 	"stevearc/conform.nvim",
 
@@ -88,6 +95,10 @@ return {
 			terraform          = terraform_fmt,
 			["terraform-vars"] = terraform_fmt,
 
+			-- Not a style preference either: with `sqls` gone there is no language server
+			-- behind SQL at all, so this is the only thing that formats it.
+			sql                = sqlfluff,
+
 			vue                = prettier,
 			javascript         = prettier,
 			javascriptreact    = prettier,
@@ -102,6 +113,37 @@ return {
 			json               = prettier,
 			jsonc              = prettier,
 			yaml               = prettier,
+		},
+
+		-- Per-formatter overrides of conform's bundled definitions.
+		formatters = {
+			-- conform ships `sqlfluff` with `require_cwd = true`, so it runs only where a
+			-- `.sqlfluff`, `pyproject.toml`, `setup.cfg`, `pep8.ini` or `tox.ini` sits above
+			-- the file. Right for a project and wrong for the main SQL consumer here:
+			-- `vim-dadbod-ui` writes its query buffers into a temp directory where no such
+			-- root exists, so formatting a query would silently do nothing at all.
+			--
+			-- Turning it off does not lose project config -- sqlfluff still discovers a
+			-- project's own `.sqlfluff` by walking up from the file it is given, and falls
+			-- back to the machine-wide config that already pins the `tsql` dialect (see
+			-- README.md). It only stops conform from refusing to run in the first place.
+			--
+			-- `exit_codes` is the other half, and without it this formatter is unusable in
+			-- practice. `sqlfluff fix` exits 1 whenever any violation remains that it cannot
+			-- fix, and conform treats a non-zero exit as a hard failure and throws the result
+			-- away -- so the buffer is left unformatted and an error is logged. The rule that
+			-- trips it constantly is `AM04`, "query produces an unknown number of result
+			-- columns", which fires on `SELECT *` and is unfixable by definition: sqlfluff
+			-- cannot know the columns. `SELECT *` is most of ad-hoc querying, and it is
+			-- literally what `vim-dadbod-ui`'s own table helpers generate.
+			--
+			-- Accepting 1 is safe rather than merely convenient, verified both ways: every
+			-- diagnostic sqlfluff emits goes to *stderr*, and stdout is always SQL -- the
+			-- reformatted text when it could fix anything, and the input unchanged when the
+			-- buffer does not parse at all. So the worst case is a buffer left exactly as it
+			-- was. conform's own bundled `standardrb` and `puppet-lint` definitions do the
+			-- same thing for the same reason.
+			sqlfluff = { require_cwd = false, exit_codes = { 0, 1, }, },
 		},
 
 		-- Applies to `conform.format()` and to format-on-save alike, so the fallback rule

@@ -81,6 +81,26 @@ BREW_DEPS=(
 	# as with `cc` the formula is nominal and the value is in --check reporting it.
 	"tar|-|gnu-tar|"
 	"gzip|-|gzip|"
+	# ── Database, for `lua/plugin/database.lua` ──────────────────────────
+	# `sqlcmd` is what vim-dadbod's SQL Server adapter shells out to, for every query and
+	# every schema introspection the completion source makes. It must be
+	# `microsoft/go-sqlcmd`, the Go rewrite, and NOT the legacy ODBC `mssql-tools` binary of
+	# the same name: only the rewrite has `--authentication-method`, the single flag that
+	# lets the Azure connection reuse the token `az login` already cached.
+	# The legacy binary has no `--version` flag, so its probe fails and resolves to 0 --
+	# the intended outcome, since its own version numbers (17.x, 18.x) would otherwise sail
+	# straight past any floor set here.
+	# 1.5.0 is the version verified on this machine to accept `ActiveDirectoryAzCli`; earlier
+	# 1.x releases may accept it too, but that was not tested. brew currently ships 1.10.0.
+	# `--version` prints a bare `v1.5.0`, hence the `v` strip.
+	"sqlcmd|1.5.0|sqlcmd|sqlcmd --version | head -1 | sed 's/^v//'"
+	# The Azure CLI, because `ActiveDirectoryAzCli` is not a self-contained auth mode: it
+	# resolves to `azidentity.NewAzureCLICredential`, which spawns `az account
+	# get-access-token` and hands the result to sqlcmd. Without `az` on PATH -- and without a
+	# current `az login` -- the Docker connection still works and the Azure one does not.
+	# Presence-only: that subcommand is stable, and pinning the CLI that fronts a company's
+	# own auth is a fight not worth picking.
+	"az|-|azure-cli|"
 	# ── Linters, for `lua/plugin/lint.lua` ───────────────────────────────────────────
 	# nvim-lint spawns these by name and installs none of them. A missing one warns once
 	# and contributes no diagnostics, so the failure is quiet rather than loud.

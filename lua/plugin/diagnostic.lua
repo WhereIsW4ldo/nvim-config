@@ -30,6 +30,22 @@ return {
 
 		opts = {
 			options = {
+				-- Which events attach the plugin to a buffer. Upstream's default is
+				-- `{ "LspAttach" }` alone, which quietly means "only buffers with a
+				-- language server" -- and this config has two filetypes that deliberately
+				-- have none. `sql` is one since `sqls` was retired (see README.md), and
+				-- `sh` has never had one at all. Both get their diagnostics from nvim-lint
+				-- rather than from a server, so `LspAttach` never fires for them, the
+				-- plugin never attaches, and the result is a gutter sign whose message
+				-- cannot be read anywhere -- moving onto the line does nothing.
+				--
+				-- `BufEnter` rather than `BufReadPost`/`BufNewFile`, deliberately: those
+				-- have already fired for the file named on the command line by the time
+				-- this loads on `VeryLazy`, so the very first buffer of a session would
+				-- still never attach. Cheap regardless -- upstream guards the handler with
+				-- `is_attached(event.buf)` and returns immediately on every repeat.
+				overwrite_events = { "LspAttach", "BufEnter", },
+
 				add_messages = {
 					-- The cursor-line/elsewhere split, and the reason this plugin is here.
 					-- Off the cursor line the message collapses to a severity glyph and a
