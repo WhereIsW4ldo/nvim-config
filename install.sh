@@ -15,7 +15,9 @@
 # │ ADDING A DEPENDENCY: append to BREW_DEPS or NPM_DEPS below. That is the only  │
 # │ place to edit -- everything else is driven from those two tables. Also record  │
 # │ it in README.md under "External dependencies".                                │
-# │ Exception: language servers live in mason, not install.sh -- see CLAUDE.md. │
+# │ Exceptions: language servers live in mason, not here -- see CLAUDE.md; and  │
+# │ a tool needing a CONFIG FILE rather than a binary is handled in its own       │
+# │ section further down, since neither table can express one.                    │
 # └──────────────────────────────────────────────────────────────────────────────┘
 
 set -euo pipefail
@@ -388,6 +390,80 @@ for entry in "${CONDITIONAL_DEPS[@]}"; do
 	have "$cmd" || die "$cmd still not on PATH after installing $formula"
 	ok "$cmd installed"
 done
+
+# ── Tool configuration ───────────────────────────────────────────────────────────
+# One tool here needs a config file and not merely a binary, which is why this section
+# exists outside the two tables above. sqlfluff has no default dialect -- it sets `None`
+# and then refuses to lint anything at all -- and since `lua/plugin/format.lua` now also
+# *formats* SQL with `sqlfluff fix`, a machine without this file does not just lint
+# loosely: it lints nothing and formats to the wrong indent width. That is precisely the
+# silently half-working install this script exists to prevent.
+#
+# It cannot live in the repository. sqlfluff resolves config by walking up from the file
+# it is handed, and the buffers that matter most here are vim-dadbod-ui's query buffers,
+# which it writes into a temp directory nowhere near this repo.
+SQLFLUFF_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/sqlfluff/.sqlfluff"
+
+heading "Tool configuration"
+
+if [ -f "$SQLFLUFF_CONFIG" ]; then
+	# Present already, so report rather than rewrite: it may have been changed on purpose,
+	# and silently clobbering someone's own config is a worse failure than a stale one.
+	# Only the three settings this config actually depends on are checked.
+	missing_keys=""
+	grep -qE '^[[:space:]]*dialect[[:space:]]*='        "$SQLFLUFF_CONFIG" || missing_keys="$missing_keys dialect"
+	grep -qE '^[[:space:]]*exclude_rules[[:space:]]*='  "$SQLFLUFF_CONFIG" || missing_keys="$missing_keys exclude_rules"
+	grep -qE '^[[:space:]]*tab_space_size[[:space:]]*=' "$SQLFLUFF_CONFIG" || missing_keys="$missing_keys tab_space_size"
+
+	if [ -n "$missing_keys" ]; then
+		warn "sqlfluff config does not set:$missing_keys"
+		warn "left untouched at $SQLFLUFF_CONFIG -- see README.md for what is expected"
+	else
+		ok "sqlfluff configured ($SQLFLUFF_CONFIG)"
+	fi
+elif $CHECK_ONLY; then
+	bad "sqlfluff config missing -- $SQLFLUFF_CONFIG"
+	MISSING=$((MISSING + 1))
+else
+	mkdir -p "$(dirname "$SQLFLUFF_CONFIG")"
+
+	# `<<-` strips leading tabs, which is what lets this stay indented with the block it
+	# sits in while the file itself comes out flush left.
+	cat > "$SQLFLUFF_CONFIG" <<-'SQLFLUFF_EOF'
+		# Machine-wide sqlfluff defaults. Written by ~/.config/nvim/install.sh; read by
+		# nvim-lint (lua/plugin/lint.lua) and by conform (lua/plugin/format.lua), which
+		# formats SQL with `sqlfluff fix` now that the `sqls` language server is retired.
+		#
+		# sqlfluff has no default dialect -- it sets `dialect = None` and then requires one,
+		# so without this every SQL buffer fails to lint at all rather than linting loosely.
+		#
+		# `tsql` is MS SQL Server (there is no `mssql` identifier). A project that uses
+		# something else overrides this with its own `.sqlfluff` in the repo root; the
+		# nearest config wins, so a personal Postgres project needs:
+		#
+		#     [sqlfluff]
+		#     dialect = postgres
+		#
+		[sqlfluff]
+		dialect = tsql
+
+		# AM04 -- "query produces an unknown number of result columns" -- fires on `SELECT *`
+		# and is unfixable by definition, since sqlfluff cannot know the columns. A fair rule
+		# for a checked-in query and pure noise for ad-hoc querying, where `SELECT *` is the
+		# point. Excluding it also removes the violation that most often made `sqlfluff fix`
+		# exit non-zero -- see lua/plugin/format.lua for why that mattered.
+		exclude_rules = AM04
+
+		# Two-space indentation, deliberately non-default -- sqlfluff ships 4. This governs
+		# both the LT02 rule that reports indentation and the `sqlfluff fix` that conform
+		# runs to format, so the formatter and the linter agree by construction rather than
+		# by luck.
+		[sqlfluff:indentation]
+		tab_space_size = 2
+	SQLFLUFF_EOF
+
+	ok "sqlfluff configured ($SQLFLUFF_CONFIG)"
+fi
 
 # ── Verify ───────────────────────────────────────────────────────────────────────
 heading "Verifying the config"

@@ -214,7 +214,17 @@ npm i -g eslint_d@15.0.3 markdownlint-cli2@0.23.2
 
   This machine is set up two-tier, since the usual dialect is SQL Server and personal
   projects are Postgres. The machine-wide default lives **outside this repo**, at
-  `~/.config/sqlfluff/.sqlfluff`:
+  `~/.config/sqlfluff/.sqlfluff` — it cannot live in the repo, because sqlfluff resolves
+  config by walking up from the file it is handed, and the buffers that matter most are
+  vim-dadbod-ui's, written into a temp directory nowhere near here.
+
+  **`install.sh` writes that file**, so a fresh machine is not left half-configured. It is
+  the one thing in the script that is a config file rather than a binary, which is why it
+  has its own section instead of a table entry. If the file already exists it is reported
+  and **left alone** — never rewritten, since it may have been customised deliberately —
+  with a warning naming any of the three expected settings it does not set. That case is a
+  warning and not a failure: `./install.sh --check` exits non-zero when the file is
+  *missing*, not when it is merely different from this one.
 
   ```ini
   [sqlfluff]
@@ -251,8 +261,9 @@ npm i -g eslint_d@15.0.3 markdownlint-cli2@0.23.2
   every diagnostic to stderr and puts only SQL on stdout — reformatted where it could fix
   something, and the input unchanged where the buffer does not parse at all.
 
-  If the `AM04` *diagnostic* is also unwanted — it is noise for ad-hoc querying, where
-  `SELECT *` is the point — exclude it machine-wide:
+  `AM04` is excluded in the same file. The rule is fair for a checked-in query and pure
+  noise for ad-hoc querying, where `SELECT *` is the point — and it was also the violation
+  that most often made `sqlfluff fix` exit non-zero:
 
   ```ini
   [sqlfluff]
