@@ -47,9 +47,10 @@ return {
 		-- not lint, which is also why `try_lint()` below needs no guard.
 		--
 		-- Two languages are deliberately absent because the server already covers them:
-		-- C#, where `roslyn_ls` IS Roslyn -- the engine the standalone analysers call --
-		-- and Rust, where `clippy` is a `rust_analyzer` setting rather than a separate
-		-- process worth spawning alongside it.
+		-- C#, where the server easy-dotnet starts IS Roslyn -- the engine the standalone
+		-- analysers call -- with Roslynator's rules bundled on top, and Rust, where
+		-- `clippy` is a `rust_analyzer` setting rather than a separate process worth
+		-- spawning alongside it.
 		lint.linters_by_ft = {
 			-- `lua_ls` reports types and syntax; luacheck reports unused locals, shadowed
 			-- variables and global leaks, which it does not. Needs `.luacheckrc` to know

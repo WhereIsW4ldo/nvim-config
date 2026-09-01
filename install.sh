@@ -12,12 +12,12 @@
 # Supported: Linux. macOS is structured for but NOT tested -- see the OS block below.
 #
 # ┌──────────────────────────────────────────────────────────────────────────────┐
-# │ ADDING A DEPENDENCY: append to BREW_DEPS or NPM_DEPS below. That is the only  │
-# │ place to edit -- everything else is driven from those two tables. Also record  │
-# │ it in README.md under "External dependencies".                                │
+# │ ADDING A DEPENDENCY: append to BREW_DEPS, NPM_DEPS or DOTNET_TOOL_DEPS below. │
+# │ That is the only place to edit -- everything else is driven from those three  │
+# │ tables. Also record it in README.md under "External dependencies".            │
 # │ Exceptions: language servers live in mason, not here -- see CLAUDE.md; and  │
 # │ a tool needing a CONFIG FILE rather than a binary is handled in its own       │
-# │ section further down, since neither table can express one.                    │
+# │ section further down, since no table can express one.                         │
 # └──────────────────────────────────────────────────────────────────────────────┘
 
 set -euo pipefail
@@ -44,10 +44,13 @@ BREW_DEPS=(
 	# `gcc-13` rather than `cc`, so the brew path here is nominal. Listed anyway so
 	# --check reports it on a fresh machine, which is this script's job.
 	"cc|-|gcc|"
-	# The .NET SDK, for the C# server (`roslyn_ls`). Two reasons, both hard requirements:
-	# its mason package is a NuGet package, which mason installs by spawning `dotnet`, and
-	# Microsoft.CodeAnalysis.LanguageServer 5.8 is a `net10.0` assembly needing the
-	# matching runtime. `dotnet --version` reports the SDK, which implies the runtime.
+	# The .NET SDK, for everything in `lua/plugin/dotnet.lua`. Three reasons, all hard
+	# requirements: `dotnet tool install` is how the EasyDotnet sidecar in DOTNET_TOOL_DEPS
+	# below gets onto this machine, that sidecar in turn downloads and runs
+	# `roslyn-language-server`, and Microsoft.CodeAnalysis.LanguageServer 5.8 is a
+	# `net10.0` assembly needing the matching runtime. `dotnet --version` reports the SDK,
+	# which implies the runtime. NOT a mason dependency any more -- C# left mason when
+	# easy-dotnet took over the server.
 	"dotnet|10.0.0|dotnet|dotnet --version"
 	# A Rust toolchain, for `rust_analyzer`. mason ships the server as a prebuilt binary,
 	# but the server itself shells out to `cargo metadata` to load a workspace -- without
@@ -167,6 +170,35 @@ NPM_DEPS=(
 	# on heading or list formatting. `cli2` is the current line; plain `markdownlint-cli`
 	# is the older one and nvim-lint ships definitions for both.
 	"markdownlint-cli2|markdownlint-cli2@0.23.2"
+	# VS Code's standalone language servers. Only ONE of the five binaries in this package
+	# is wanted: `vscode-html-language-server`, which easy-dotnet bridges markup-backed
+	# Razor requests to -- completion, hover, formatting and document symbols inside the
+	# HTML half of a `.razor` or `.cshtml` file. easy-dotnet neither bundles nor installs
+	# it, and without it Razor still opens through Roslyn but every markup request returns
+	# empty. The other four binaries are inert here: `vscode-json-language-server` and
+	# friends are not in `lsp.lua`'s `ensure_installed`, so nothing starts them.
+	# The `cmd` field is the html one because that is the only one whose absence matters.
+	"vscode-html-language-server|vscode-langservers-extracted@4.10.0"
+)
+
+# Format: command|dotnet tool package
+# A third table, because a .NET global tool is neither a brew formula nor an npm package:
+# `dotnet tool install -g` puts it in ~/.dotnet/tools, which is on PATH only if the shell
+# profile says so. That PATH entry is checked below alongside the tools themselves --
+# it is the failure mode worth catching, since a tool that installs and is then not found
+# looks identical to one that was never installed.
+DOTNET_TOOL_DEPS=(
+	# The sidecar behind `lua/plugin/dotnet.lua`. Not a convenience: the test runner, the
+	# workspace diagnostics, the NuGet completion in .csproj files and the launch of the
+	# Roslyn language server itself are all RPC calls into this process. easy-dotnet will
+	# try to `dotnet tool install -g EasyDotnet` on first load if the binary is missing,
+	# but that install is only useful once ~/.dotnet/tools is on PATH -- so it is listed
+	# here to make a fresh machine fail loudly rather than half-work.
+	#
+	# Unpinned, unlike NPM_DEPS. The plugin and the sidecar are versioned together and the
+	# plugin warns when the sidecar is behind (`:Dotnet _server update`); pinning here
+	# would just be a number that goes stale against a lockfile-tracked plugin.
+	"dotnet-easydotnet|EasyDotnet"
 )
 
 # Dependencies that only apply on some platforms or session types.
@@ -356,6 +388,47 @@ for entry in "${NPM_DEPS[@]}"; do
 
 	have "$cmd" || die "$cmd still not on PATH after installing $spec"
 	ok "$cmd installed"
+done
+
+# ── .NET global tools ────────────────────────────────────────────────────────────
+heading ".NET tools"
+
+# ~/.dotnet/tools is where `dotnet tool install -g` puts its shims, and `dotnet` does not
+# add it to PATH for you. Reported once rather than per tool, because it is one line in a
+# shell profile and it is the reason every entry below would otherwise fail.
+DOTNET_TOOLS_DIR="${DOTNET_TOOLS_DIR:-$HOME/.dotnet/tools}"
+case ":$PATH:" in
+	*":$DOTNET_TOOLS_DIR:"*) ok "$DOTNET_TOOLS_DIR is on PATH" ;;
+	*) warn "$DOTNET_TOOLS_DIR is not on PATH -- add it in your shell profile" ;;
+esac
+
+for entry in "${DOTNET_TOOL_DEPS[@]}"; do
+	IFS='|' read -r cmd package <<<"$entry"
+
+	if have "$cmd"; then
+		ok "$cmd present ($(command -v "$cmd"))"
+		continue
+	fi
+
+	if $CHECK_ONLY; then
+		bad "$cmd missing -- dotnet tool install -g $package"
+		MISSING=$((MISSING + 1))
+		continue
+	fi
+
+	have dotnet || die "the .NET SDK is required to install $package"
+	dotnet tool install -g "$package"
+
+	# `have` consults the shell's own PATH, which will not contain the tools directory if
+	# the warning above fired -- so check the shim on disk too before calling this a
+	# failure. The tool is installed either way; what is missing is the PATH entry.
+	if have "$cmd"; then
+		ok "$cmd installed"
+	elif [ -x "$DOTNET_TOOLS_DIR/$cmd" ]; then
+		warn "$cmd installed to $DOTNET_TOOLS_DIR but not on PATH -- Neovim will not find it"
+	else
+		die "$cmd still not found after installing $package"
+	fi
 done
 
 # ── Platform-conditional tools ───────────────────────────────────────────────────

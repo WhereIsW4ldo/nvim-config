@@ -175,6 +175,13 @@ as confirmed working.
   mason` covers that half. The accepted cost is that mason has no lockfile, so server
   versions float where `lazy-lock.json` pins everything else; `ensure_installed` accepts
   per-server pinning (`"rust_analyzer@nightly"`) if that ever matters.
+- **C# is the exception to that exception.** Its server is not in `ensure_installed` and
+  must never be put back: `lua/plugin/dotnet.lua` starts the same Roslyn through
+  easy-dotnet's sidecar, and a mason `roslyn_ls` alongside it attaches a *second* Roslyn to
+  every `cs` buffer. `automatic_enable` enables every **installed** server, not just the
+  named ones, so `automatic_enable.exclude` holds the line even where the mason package is
+  still on disk. easy-dotnet's own external dependency, the `EasyDotnet` .NET global tool,
+  is in `install.sh`'s third table, `DOTNET_TOOL_DEPS`.
 - **Platform support:** Linux is the supported target. macOS is structurally
   accounted for in `install.sh` but untested — keep new code portable, and do not
   assume Linux-only paths or GNU-only flags without saying so.
