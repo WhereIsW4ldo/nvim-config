@@ -107,7 +107,27 @@ return {
 			-- `SQLCMDMAXVARTYPEWIDTH` is the one whose name suggests it, and it is the lesser
 			-- half: it covers only the `(max)` types plus `xml`/`text`/`image`, and already
 			-- defaults to 256.
-			vim.env.SQLCMDMAXFIXEDTYPEWIDTH = "30"
+			--
+			-- Both are hard *truncations* rather than wrapping, and go-sqlcmd prints no
+			-- ellipsis when it cuts -- so a clipped cell is indistinguishable from a short
+			-- one. That is why the fixed one is 0, unlimited, rather than some larger number:
+			-- for a *declared-width* type "unlimited" is still bounded, by the declaration,
+			-- so the only cost is padding -- and `config.dbout-format`, wired up below, takes
+			-- that padding back out of the result buffer. Any number here, however generous,
+			-- is a silent data loss waiting for a long enough value.
+			--
+			-- It matters past the result buffer too. The drawer's introspection
+			-- (`db_ui#schemas#query`, args `-h-1 -W -s |`) and dadbod's own completion
+			-- (`s:complete`, `-h-1 -W`) run through these same caps. `-W` strips the padding
+			-- there, so unlimited costs them nothing -- but it does *not* undo truncation, and
+			-- the 30 this used to be was quietly shortening any table or column name longer
+			-- than 30 characters in the drawer and in completion.
+			--
+			-- `SQLCMDMAXVARTYPEWIDTH` stays a real cap, and is the one place a value can still
+			-- be cut silently. `varchar(max)`, `xml` and `text` carry no declared bound, so 0
+			-- would mean a single row can be megabytes wide on one line -- and no amount of
+			-- re-fitting afterwards makes that readable.
+			vim.env.SQLCMDMAXFIXEDTYPEWIDTH = "0"
 			vim.env.SQLCMDMAXVARTYPEWIDTH   = "100"
 
 			-- A script `sqlcmd` runs before the query itself, every time. The variable is
@@ -123,6 +143,31 @@ return {
 			if vim.uv.fs_stat(preamble) then
 				vim.env.SQLCMDINI = preamble
 			end
+
+			-- Fit every result column to the widest value actually in it, undoing the padding
+			-- the unlimited cap above brings with it. `config.dbout-format` carries the whole
+			-- explanation, including why this cannot be a `sqlcmd` flag.
+			--
+			-- `BufReadPost` rather than `FileType`, and the difference is not cosmetic: dadbod
+			-- creates the output file *empty* (`call writefile([], outfile, 'b')`), opens it
+			-- with `pedit`, and only fills it from the job callback -- which then runs `silent
+			-- edit!` in the window showing it. The filetype is therefore set while the buffer
+			-- is still empty, and it is the reload that carries the results. `*.dbout` catches
+			-- both; the empty first pass finds no result block and does nothing.
+			--
+			-- Registered here rather than in the dadbod-ui spec below, because the `.dbout`
+			-- buffer belongs to dadbod itself -- a plain `:DB` produces one with no drawer
+			-- anywhere in sight.
+			local format = vim.api.nvim_create_augroup("waldo_dbout_format", { clear = true, })
+
+			vim.api.nvim_create_autocmd("BufReadPost", {
+				group    = format,
+				pattern  = "*.dbout",
+				desc     = "Fit query result columns to their widest value",
+				callback = function(event)
+					require("config.dbout-format").reflow(event.buf)
+				end,
+			})
 		end,
 	},
 

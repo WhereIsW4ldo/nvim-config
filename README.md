@@ -368,9 +368,38 @@ issue threads settle on.
 
 | Variable | Set to | Default | Why |
 |---|---|---|---|
-| `SQLCMDMAXFIXEDTYPEWIDTH` | `30` | `0` (unlimited) | The one that matters. Governs **declared-width** types — `char(n)`, `varchar(n)`, `nvarchar(n)` — which are otherwise padded to their declared width, so a `varchar(255)` column is 255 characters wide even when no row is. |
-| `SQLCMDMAXVARTYPEWIDTH` | `100` | `256` | The one whose name suggests it, and the lesser half: only the `(max)` types plus `xml`/`text`/`image`. |
+| `SQLCMDMAXFIXEDTYPEWIDTH` | `0` (unlimited) | `0` (unlimited) | Governs **declared-width** types — `char(n)`, `varchar(n)`, `nvarchar(n)`. Left unlimited so nothing is ever cut; the padding it brings is taken back out by `lua/config/dbout-format.lua` below. |
+| `SQLCMDMAXVARTYPEWIDTH` | `100` | `256` | The lesser half: only the `(max)` types plus `xml`/`text`/`image`. Stays a real cap — those types have no declared bound, so unlimited would mean one row can be megabytes wide on a single line. |
 | `SQLCMDINI` | `sql/preamble.sql` | unset | A script run before every query. |
+
+Both are hard truncations rather than wrapping, and go-sqlcmd prints no ellipsis when it
+cuts — a clipped cell looks exactly like a short one. That is why the fixed one is
+unlimited: for a declared-width type "unlimited" is still bounded, by the declaration, so
+the only cost is padding. The cap also reaches the drawer and completion, whose schema
+queries run through the same variables, so a low value silently shortened long table and
+column names there too. `SQLCMDMAXVARTYPEWIDTH` is now the one place a value can still be
+cut without saying so.
+
+#### Fitting result columns to their data
+
+go-sqlcmd has no autofit-to-data option — its only width controls are the two caps above,
+both applied from the column's declared type before a single row is read. The two flags
+that could help indirectly, `-W` (trim trailing spaces) and `-F` (output format), are the
+only formatting flags with no scripting variable behind them, and dadbod's argv has no hook
+to add flags — so `vim.env` cannot reach them.
+
+`lua/config/dbout-format.lua` does it afterwards instead. On `BufReadPost *.dbout` it
+re-measures each column against the values actually in it and rewrites header, rule and
+rows together, so a `varchar(200)` column holding a 35-character name is 35 wide on screen.
+Numeric columns keep the right alignment sqlcmd gave them.
+
+It works off the `----- ----` rule line, which states every column's exact start and end,
+so nothing is guessed — and other adapters' output is untouched for free, since postgres
+rules with `-----+-----` and mysql with `+-----+`, neither of which parses as a rule line.
+A block whose rows do not match that geometry — a value containing a newline is the
+realistic cause — is left exactly as sqlcmd printed it rather than reflowed into nonsense.
+The buffer is rewritten, never the file on disk, and it is left unmodified so nothing ever
+prompts to save it.
 
 `sql/preamble.sql` is in this repository, tracked, and ships commented out. Uncomment what
 you want — `SET NOCOUNT ON;` to drop the `(N rows affected)` lines, or the isolation-level
