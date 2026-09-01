@@ -215,6 +215,13 @@ a project's `.prettierrc`). Terraform is a separate case, on latency rather than
 see below. Everything else — Lua, C#, Rust, SQL, Dockerfiles — falls through to its server
 and needs nothing here.
 
+.NET project files (`.csproj`, `.fsproj`, `.vbproj`, `.props`, `.targets`, `.slnx`) are the
+one exception to that fallback: they are `xml` buffers with no CLI formatter, so the
+fallback was easy-dotnet's ProjX server, which strips the blank lines between `<ItemGroup>`s
+and respaces self-closing tags on every write. `lua/plugin/dotnet.lua` sets conform's own
+`disable_autoformat` on those buffers and pins them to two-space indent, overriding
+`.editorconfig` — `<leader>F` still formats one on demand.
+
 ```sh
 npm i -g @fsouza/prettierd@0.29.0
 ```

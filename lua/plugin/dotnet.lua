@@ -145,6 +145,61 @@ return {
 				type = "file_scoped",
 			},
 		},
+
+		-- Project files are `xml` buffers, and two things follow from that which have nothing
+		-- to do with the plugin's own options.
+		--
+		-- The indentation first. `lua/config/vim.lua` deliberately sets no indent options at
+		-- all, leaving them to Neovim's built-in EditorConfig support. That is right for every
+		-- language whose projects state what they want, and wrong for `.csproj`: the
+		-- `.editorconfig` a `dotnet new` solution ships has `[*] indent_size = 4` for C#'s
+		-- sake and frequently no section for project files at all, so a csproj inherits four
+		-- spaces where the SDK's own templates -- and every csproj Visual Studio has written
+		-- -- use two.
+		--
+		-- Winning that fight is the whole trick, and it is not a matter of picking a later
+		-- event: `BufRead` and `BufReadPost` are the *same* event, so the order is
+		-- registration order -- and nvim's editorconfig hook lives in a runtime plugin, which
+		-- is sourced after `init.lua` and therefore after this `init`. Whatever is set inline
+		-- here is overwritten a moment later; verified, `shiftwidth` came back 4. `FileType`
+		-- loses for the same reason. `vim.schedule` is what settles it: it defers to after
+		-- every handler for the event has run, editorconfig's included.
+		--
+		-- Note that this deliberately overrides an explicit `.editorconfig` too, so it is a
+		-- statement of preference and not just a default. The patterns keep it narrow -- an
+		-- ordinary `.xml` gets whatever its repo says.
+		--
+		-- Then format-on-save, which is the same fact seen from the other side. ProjX
+		-- advertises `documentFormattingProvider`, and `lua/plugin/format.lua` names no CLI
+		-- formatter for `xml`, so `lsp_format = "fallback"` handed every csproj write to
+		-- ProjX -- which does not merely re-indent: it strips the blank lines between
+		-- `<ItemGroup>`s and respaces `<PackageReference ... />`, producing a diff on every
+		-- save of a file nobody asked to have reformatted. `disable_autoformat` is conform's
+		-- own buffer-level opt-out, the variable `:FormatDisable!` sets, so this costs nothing
+		-- else: `<leader>F` still formats a csproj on demand, and `:FormatEnable` re-arms the
+		-- buffer.
+		init = function()
+			local group = vim.api.nvim_create_augroup("waldo_dotnet_project_file", { clear = true, })
+
+			vim.api.nvim_create_autocmd({ "BufNewFile", "BufReadPost", }, {
+				group    = group,
+				pattern  = { "*.csproj", "*.fsproj", "*.vbproj", "*.props", "*.targets", "*.slnx", },
+				desc     = "Two-space indent for .NET project files, and no format-on-save",
+				callback = function(args)
+					vim.b[args.buf].disable_autoformat = true
+
+					vim.schedule(function()
+						if not vim.api.nvim_buf_is_valid(args.buf) then
+							return
+						end
+
+						vim.bo[args.buf].expandtab  = true
+						vim.bo[args.buf].shiftwidth = 2
+						vim.bo[args.buf].tabstop    = 2
+					end)
+				end,
+			})
+		end,
 	},
 
 	-- The explorer half of "new C# file". `create_item` is easy-dotnet's Roslyn-backed
