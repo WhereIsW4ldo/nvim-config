@@ -26,6 +26,13 @@ local languages = {
 
 	"c_sharp",
 
+	-- Not a language anyone edits by choice -- it is here for .NET's project files.
+	-- `.csproj`, `.fsproj`, `.slnx` and `Directory.Packages.props` are all `xml` to
+	-- Neovim, and they are the buffers `lua/plugin/dotnet.lua` puts NuGet completion and
+	-- the `Dotnet outdated` virtual text into. Without a parser they had no highlighting
+	-- at all. It also backs easy-dotnet's `//language=xml` injections into C# strings.
+	"xml",
+
 	-- Both ship with Neovim already; naming them keeps this list the honest answer to
 	-- "what is supported", and makes `install()` a no-op rather than a silent gap.
 	"markdown",

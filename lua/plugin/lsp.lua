@@ -12,6 +12,10 @@
 -- shells out to. If a floating version ever bites, `ensure_installed` accepts per-server
 -- pinning (`"rust_analyzer@nightly"`) without adopting a lockfile.
 --
+-- C# is the exception, and the only one. Its server comes from `lua/plugin/dotnet.lua`,
+-- which drives the same Roslyn through easy-dotnet's own sidecar -- see the note on
+-- `ensure_installed` below.
+--
 -- An array of specs rather than one table, because these three are only useful together.
 -- `lazydev.nvim`, which makes lua_ls aware of the Neovim runtime, lives in
 -- `lua/plugin/lua.lua` instead -- it is Lua-specific, not part of the generic server
@@ -47,21 +51,38 @@ return {
 			-- in README.md under "Language servers"; a server needing more than a name
 			-- here gets a `lua/plugin/<language>.lua` of its own, as `typescript.lua`
 			-- and `docker.lua` do.
+			--
+			-- C# is the one language with a server and no entry here. `roslyn_ls` used to
+			-- be on this list; `lua/plugin/dotnet.lua` now stands up the same Roslyn
+			-- server through easy-dotnet's own sidecar, which also brings Roslynator, the
+			-- test runner and Razor. Adding it back would attach a second Roslyn to every
+			-- `cs` buffer, since `automatic_enable` below enables whatever is installed.
 			ensure_installed = {
 				"lua_ls",
 				"terraformls",
-				"roslyn_ls",     -- needs `dotnet`: mason installs it from NuGet
 				"marksman",
-				"vtsls",         -- also serves the TypeScript half of a Vue SFC
+				"vtsls", -- also serves the TypeScript half of a Vue SFC
 				"vue_ls",
 				"docker_language_server",
 				"rust_analyzer", -- needs `cargo` on PATH to load a workspace
 			},
 
-			-- Already the default. Stated because it is the reason no server is
-			-- configured by hand anywhere in this config: mason-lspconfig calls
-			-- `vim.lsp.enable()` for every installed server itself.
-			automatic_enable = true,
+			-- `true` is the default, and stating it is the reason no server is configured
+			-- by hand anywhere in this config: mason-lspconfig calls `vim.lsp.enable()`
+			-- itself. Note *every installed server*, not every server named above --
+			-- dropping a name from `ensure_installed` stops mason installing it and does
+			-- nothing about a copy already on disk.
+			--
+			-- Which is exactly what `roslyn_ls` did. Removing it from the list left
+			-- `~/.local/share/nvim/mason/packages/roslyn-language-server` in place, so it
+			-- was still auto-enabled and still attached alongside easy-dotnet's client --
+			-- two Roslyns on every `cs` buffer, verified rather than theorised. The
+			-- exclusion is what makes the removal hold on a machine that has the package
+			-- installed; `:MasonUninstall roslyn-language-server` is the other half, and
+			-- reclaims the disk.
+			automatic_enable = {
+				exclude = { "roslyn_ls", },
+			},
 		},
 	},
 

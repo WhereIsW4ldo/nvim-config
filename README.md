@@ -15,7 +15,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
 | tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential` |
-| .NET SDK **10+** | The C# server (`roslyn_ls`) — see below | `dotnet --version` |
+| .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`: the `EasyDotnet` global tool, the Roslyn server it manages, and the `dotnet` verbs themselves | `dotnet --version` |
 | A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
 | `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Present on any base Linux except sometimes `unzip` |
 
@@ -38,23 +38,26 @@ Unlike the rest of this config, server versions are **not pinned**: mason has no
 lockfile, so a fresh machine gets whatever is current. That is a deliberate trade for
 not maintaining a server list in two places.
 
+**C# is not in that list.** It used to be — `roslyn_ls`, installed by mason from NuGet —
+and it now comes from easy-dotnet instead, which drives the *same* Roslyn server through
+its own sidecar and adds Roslynator, Razor and a test runner on top. See
+[.NET tooling](#net-tooling--required-by-luaplugindotnetlua) below.
+
 #### Which server, and why
 
 | Language | Server | Chosen over |
 |---|---|---|
 | Terraform | `terraformls` | HashiCorp's own. `terraform_lsp` is the community alternative and is unmaintained. |
-| C# | `roslyn_ls` | `omnisharp` (the Mono-era predecessor) and `csharp_ls` (community, lighter, less complete). This is the engine behind the VS Code C# extension. |
 | Markdown | `marksman` | — |
 | Vue + TypeScript | `vue_ls` + `vtsls` | `ts_ls`. Since Vue language server v3 there is no takeover mode, and both upstreams point at `vtsls`; lspconfig warns against enabling `ts_ls` alongside it. |
 | Docker | `docker_language_server` | `dockerls` + `docker_compose_language_service`, which take two servers to cover the same ground. Docker's own binary also handles Bake. |
 | Rust | `rust_analyzer` | — |
 
-Three of them need a toolchain `install.sh` now installs: **`dotnet`**, because
-`roslyn_ls` is distributed as a NuGet package that mason installs by spawning `dotnet`,
-and the server is a `net10.0` assembly; **`cargo`**, because `rust_analyzer` shells
-out to `cargo metadata` and knows nothing about a project without it; and
+Two of them need a toolchain `install.sh` installs: **`cargo`**, because `rust_analyzer`
+shells out to `cargo metadata` and knows nothing about a project without it; and
 **`terraform`**, because HCL formatting goes through the CLI rather than the server — see
-below.
+below. (**`dotnet`** is a third such toolchain, but it belongs to easy-dotnet rather than
+to mason now — see [.NET tooling](#net-tooling--required-by-luaplugindotnetlua).)
 
 One of them needs a setting, in `lua/plugin/terraform.lua`:
 
@@ -88,14 +91,119 @@ modern Node blocks via `exports`, so it exits 1 on startup.
 Schema-aware SQL completion is not lost with it — it comes from `vim-dadbod-completion`,
 and unlike `sqls` it covers the Azure connection too. See below.
 
-Two more gaps worth knowing about:
+One more gap worth knowing about:
 
-- **Razor / `.cshtml` is not supported.** `roslyn_ls` reports the request and points at
-  [roslyn.nvim](https://github.com/seblyng/roslyn.nvim), which is what you would add for it.
 - **Compose files need a filetype Neovim does not detect.** `docker_language_server`
   attaches on `yaml.docker-compose`, so `lua/plugin/docker.lua` registers the patterns.
   A Compose file under a name neither `compose*.yaml` nor `docker-compose*.yaml` matches
   will open as plain `yaml` and get no server.
+
+### .NET tooling — required by `lua/plugin/dotnet.lua`
+
+C# is the one language here whose server does **not** come from mason. It used to:
+`roslyn_ls` was in `ensure_installed`, mason pulled the NuGet package, and that was the
+whole of the .NET story — a language server and nothing else. `lua/plugin/dotnet.lua` now
+runs [easy-dotnet.nvim](https://github.com/GustavEikaas/easy-dotnet.nvim), which starts the
+*same* server (Microsoft.CodeAnalysis.LanguageServer, the engine behind the VS Code C#
+extension) and adds the parts mason's copy could not:
+
+| | mason's `roslyn_ls` | easy-dotnet |
+|---|---|---|
+| Roslyn LSP | ✅ | ✅ same server |
+| Roslynator analysers | ❌ | ✅ bundled, on by default |
+| Solution-wide project graph | nearest `.csproj` | walks up for `.sln`/`.slnx` first |
+| Razor / `.cshtml` | ❌ | ✅ |
+| Test runner | ❌ | ✅ Rider-style, with gutter signs |
+| `run` / `watch` / `build` / launch profiles | ❌ | ✅ `:Dotnet` |
+| User secrets, NuGet add/outdated | ❌ | ✅ |
+
+The two must never both be enabled — `mason-lspconfig`'s `automatic_enable` would attach a
+second Roslyn to every `cs` buffer, doubling diagnostics and completion and running two
+solution indexes side by side. That is why C# is absent from `ensure_installed`.
+
+`omnisharp` (the Mono-era predecessor) and `csharp_ls` (community, lighter, less complete)
+remain the alternatives not taken, on the same grounds as before.
+
+#### `dotnet-easydotnet` — the sidecar
+
+Not a Lua file and not optional. The test runner, the workspace diagnostics, the NuGet
+completion in `.csproj` buffers and the launch of the Roslyn server itself are all RPC
+calls into a .NET global tool:
+
+```sh
+dotnet tool install -g EasyDotnet
+```
+
+The plugin will run that install itself on first load if the binary is missing — but the
+shim lands in `~/.dotnet/tools`, and `dotnet` does not put that directory on `PATH` for
+you. Installed-but-not-on-`PATH` looks exactly like never-installed, so `install.sh` owns
+both halves: it installs the tool from `DOTNET_TOOL_DEPS` and warns separately when the
+directory is missing from `PATH`.
+
+It is the one entry in `install.sh` that is **not pinned**. Plugin and sidecar are
+versioned together and the plugin warns when the sidecar falls behind; a number here would
+only go stale against a `lazy-lock.json` that already pins the plugin. Update with:
+
+```sh
+dotnet-easydotnet -v          # what is installed
+```
+
+then `:Dotnet _server update` from inside Neovim.
+
+**`roslyn-language-server` is deliberately not listed anywhere.** The sidecar downloads and
+manages it (`dotnet tool install --global roslyn-language-server --prerelease`), which is
+also why `./install.sh --check` is silent about the C# server just as it is about mason's.
+`:checkhealth easy-dotnet` is what covers it.
+
+#### `vscode-html-language-server` — Razor markup
+
+Razor and `.cshtml` open through Roslyn on their own, but the markup half of the file —
+HTML completion, hover, formatting, document symbols — is bridged to VS Code's standalone
+HTML server, which easy-dotnet neither bundles nor installs:
+
+```sh
+npm i -g vscode-langservers-extracted@4.10.0
+```
+
+Only that one binary of the five in the package is used; the JSON, CSS, ESLint and Markdown
+servers it also ships are inert here, since nothing in `lua/plugin/lsp.lua` starts them.
+Without it, Razor files still open and still get C# support — the markup-backed requests
+just return empty.
+
+#### File watching, on Linux
+
+Roslyn learns about on-disk changes from one of two watchers, and on Linux easy-dotnet
+picks the weaker one on purpose. Neovim's own watcher (`workspace/didChangeWatchedFiles`)
+is backed by inotify and registers one instance per directory, so a large solution
+exhausts `fs.inotify.max_user_instances` and the file descriptor limit and watching stops
+altogether. The in-process watcher keeps an untuned machine working.
+
+This config leaves that default alone rather than shipping an `lsp/easy_dotnet.lua` whose
+correctness depends on sysctl values that are not in this repo. `:checkhealth easy-dotnet`
+reports which side is currently watching. To switch:
+
+```sh
+sudo sysctl fs.inotify.max_user_instances=1024
+sudo sysctl fs.inotify.max_user_watches=524288
+ulimit -n 4096
+```
+
+then advertise the capability from `lsp/easy_dotnet.lua`, which is merged on top of
+easy-dotnet's defaults.
+
+#### The debugger
+
+`lua/plugin/debug.lua` supplies it — see [Debugging](#debugging) below. Nothing needs
+installing for it: easy-dotnet bundles `netcoredbg` inside its own tool store and writes
+the `coreclr` adapter and the `cs` launch configurations itself, from
+`debugger.auto_register_dap`. `:checkhealth easy-dotnet` reports the binary it found under
+`debugger.path`.
+
+That registration is `pcall`-guarded on `require("dap")`, which is why easy-dotnet worked
+before `nvim-dap` existed here and simply had no debugger. `lua/plugin/dotnet.lua` names
+`mfussenegger/nvim-dap` in its `dependencies` so the order is a fact rather than a
+coincidence: dap is loaded before easy-dotnet's `setup()` runs, so the adapter is always
+registered.
 
 ### `prettierd` — required by `lua/plugin/format.lua`
 
@@ -106,6 +214,13 @@ them (`vtsls` formats with tsserver's formatter, which is not prettier's style a
 a project's `.prettierrc`). Terraform is a separate case, on latency rather than style —
 see below. Everything else — Lua, C#, Rust, SQL, Dockerfiles — falls through to its server
 and needs nothing here.
+
+.NET project files (`.csproj`, `.fsproj`, `.vbproj`, `.props`, `.targets`, `.slnx`) are the
+one exception to that fallback: they are `xml` buffers with no CLI formatter, so the
+fallback was easy-dotnet's ProjX server, which strips the blank lines between `<ItemGroup>`s
+and respaces self-closing tags on every write. `lua/plugin/dotnet.lua` sets conform's own
+`disable_autoformat` on those buffers and pins them to two-space indent, overriding
+`.editorconfig` — `<leader>F` still formats one on demand.
 
 ```sh
 npm i -g @fsouza/prettierd@0.29.0
@@ -183,10 +298,10 @@ rules, `marksman` resolves Markdown links and holds no opinion on heading style.
 | `sh` | `shellcheck` | Everything — this is the one filetype here with **no** language server at all. |
 | `vue`, `typescript`, `typescriptreact`, `javascript`, `javascriptreact` | `eslint_d` | The project's own rules and plugin rules (`eslint-plugin-vue`), which `vtsls` and `vue_ls` never see. |
 
-**C# and Rust are deliberately absent.** `roslyn_ls` *is* Roslyn, the same engine the
-standalone C# analysers call, and `clippy` is a `rust_analyzer` setting rather than a
-second process worth spawning beside it. Adding either would duplicate work the server
-already does.
+**C# and Rust are deliberately absent.** The server easy-dotnet starts *is* Roslyn, the
+same engine the standalone C# analysers call — with Roslynator's rules bundled on top —
+and `clippy` is a `rust_analyzer` setting rather than a second process worth spawning
+beside it. Adding either would duplicate work the server already does.
 
 Four come from Homebrew — `tflint`, like `terraform` above, is **not a core formula** (core
 has no `tflint` at all), so it is tap-qualified and `brew install` taps it on demand:
@@ -540,6 +655,77 @@ here, so it is deliberately not listed.
 
 To opt out of trash entirely and take the permanent delete on purpose, set
 `explorer = { enabled = true, trash = false, }` in `lua/plugin/explorer.lua`.
+
+## Debugging
+
+`lua/plugin/debug.lua` holds [nvim-dap](https://github.com/mfussenegger/nvim-dap) and
+[nvim-dap-view](https://github.com/igorlfs/nvim-dap-view). It is in this README rather than
+under "External dependencies" because it needs **nothing installed** — the only adapter
+configured today is .NET's, and easy-dotnet bundles `netcoredbg` and registers the adapter
+itself.
+
+No adapter or launch configuration is written by hand anywhere. easy-dotnet registers
+`dap.adapters["easy-dotnet"]` and a single `dap.configurations.cs` entry — note the name:
+it is *not* the `coreclr` adapter most .NET DAP guides have you write yourself, and it is a
+`request = "attach"`, because the sidecar starts the process and the debugger attaches to
+it. That is why `<leader>cd` is the way in on a cold project rather than a bare `<F5>`.
+
+Adding a second debugged language means a `lua/plugin/<language>.lua` that registers its
+own adapter, not an edit to `debug.lua`.
+
+### Why `nvim-dap-view` and not `nvim-dap-ui`
+
+`rcarriga/nvim-dap-ui` is the better-known option and was the alternative considered. Two
+facts decided it, neither about taste:
+
+- **Inline virtual text is built in.** The debugged value drawn beside the variable is the
+  thing that makes stepping readable, and dap-view ships a minimal reimplementation of
+  `theHamsta/nvim-dap-virtual-text` — whose own last push was **2025-05-25**. With
+  nvim-dap-ui that plugin is a third install, and a stale one.
+- **No extra dependency.** nvim-dap-ui requires `nvim-neotest/nvim-nio`; dap-view requires
+  nothing.
+
+What it costs, stated plainly: easy-dotnet's live CPU and memory panels are **nvim-dap-ui
+elements** — `sys_monitor_dap_ui.lua` registers `easy-dotnet_cpu` and `easy-dotnet_mem`
+through `dapui.register_element` and through nothing else, so they do not exist here.
+dap-view has `winbar.custom_sections` and an equivalent is writable, but easy-dotnet ships
+none and this config has not written one. That is the whole of the difference.
+
+Two defaults are overridden, both off upstream:
+
+| Option | Default | Here | Why |
+|---|---|---|---|
+| `auto_toggle` | `false` | `true` | Upstream expects you to run `:DapViewOpen` yourself. A debug session with no visible scopes is not a state worth being one keypress away from. |
+| `virtual_text.enabled` | `false` | `true` | The reason this plugin won. Needs Neovim 0.12+ for `inline` virtual text, which this config already requires. |
+
+### Keys
+
+The stepping verbs are on function keys because F5/F10/F11 are what Visual Studio, VS Code
+and Rider all bind — the one part of this config deliberately *not* made
+`<leader>`-idiomatic. Everything else is the `<leader>x` group ("Debug"); `<leader>d` and
+`<leader>D` were already Diagnostics and Database.
+
+| Key | Action |
+|---|---|
+| `<F5>` | Start, or continue a running session |
+| `<F10>` / `<F11>` / `<F12>` | Step over / into / out |
+| `<leader>xb` / `<leader>xB` | Toggle breakpoint / set a conditional one |
+| `<leader>xc` | Run to cursor |
+| `<leader>xj` / `<leader>xk` | Down / up a stack frame |
+| `<leader>xl` | Re-run the last configuration |
+| `<leader>xq` / `<leader>xX` | Terminate session / clear all breakpoints |
+| `<leader>xv` | Toggle the view (after an accidental close) |
+| `<leader>xw` / `<leader>xh` | Watch / hover the expression under the cursor or selection |
+
+Breakpoints deliberately survive `<leader>xq`, so the next `<F5>` stops in the same places;
+`<leader>xX` is what clears them.
+
+Starting a .NET session is `<leader>cd` (or `<leader>cD` for a launch profile) from the
+`<leader>c` group — those pick a project, build it and launch it. Once a session is
+running everything above is language-agnostic and stays that way.
+
+Inside the view, `g?` lists the section-local keymaps, and the winbar letters switch
+sections: `W` watches, `S` scopes, `B` breakpoints, `T` threads, `R` REPL, `E` exceptions.
 
 ## Statusline
 

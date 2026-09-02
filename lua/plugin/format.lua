@@ -153,6 +153,12 @@ return {
 		},
 
 		-- A function rather than a table purely so the disable flags below can be read.
+		--
+		-- One filetype sets the buffer-local flag itself rather than waiting for
+		-- `:FormatDisable!`: `lua/plugin/dotnet.lua` opts .NET project files out, because
+		-- `xml` has no entry above and the fallback there is easy-dotnet's ProjX server,
+		-- which rewrites a `.csproj` well beyond re-indenting it. So an `xml` buffer that
+		-- never formats on save is that decision, not a gap in this list.
 		format_on_save = function(bufnr)
 			if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
 				return
