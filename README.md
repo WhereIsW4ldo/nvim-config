@@ -896,6 +896,16 @@ copy. To audit without changing anything:
 ./install.sh --check    # exits non-zero and names whatever is missing
 ```
 
+On Windows, `install.ps1` does the same with Chocolatey in place of Homebrew (winget is
+often disabled by Group Policy). Installing packages needs an elevated shell; `-Check` does
+not. `luacheck` has no Chocolatey package and is reported for manual install, and
+`sqlfluff` comes from pip.
+
+```powershell
+.\install.ps1 -Check    # exits non-zero and names whatever is missing
+.\install.ps1           # from an elevated PowerShell
+```
+
 lazy.nvim then bootstraps itself on first launch and installs plugins from
 `lazy-lock.json`. Manage them with `:Lazy`.
 
