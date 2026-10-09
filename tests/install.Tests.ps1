@@ -155,4 +155,102 @@ $Check = $false
 Invoke-Expression $toolsLoop.Extent.Text
 Assert-Equal $script:chocoCalls.Count 5 "outdated sqlcmd upgraded once"
 Assert-Equal $script:sqlcmdVersion "1.6.0" "post-upgrade version verified"
+
+$npmLoop = $ast.Find({
+	param($node)
+	$node -is [Management.Automation.Language.ForEachStatementAst] -and
+	$node.Condition.Extent.Text -eq '$NpmDeps'
+}, $false)
+$originalOptions = $env:NODE_OPTIONS
+$originalExtraCa = $env:NODE_EXTRA_CA_CERTS
+$script:npmCalls = @()
+$script:npmExit = 0
+$script:nodeExit = 0
+$script:nodeSystemCa = $true
+$script:npmPresent = $true
+$script:packagePresent = $false
+function Find-Command([string[]]$Names) {
+	if (($Names -contains "npm" -and $script:npmPresent) -or
+		($Names -contains "test-formatter" -and $script:packagePresent)) {
+		return [pscustomobject]@{ Source = "$($Names[0]).cmd" }
+	}
+	return $null
+}
+function node {
+	Assert-Equal ($args -join " ") "--help" "Node capability probe arguments"
+	$global:LASTEXITCODE = $script:nodeExit
+	if ($script:nodeSystemCa) { "  --use-system-ca             use system's CA store" }
+	else { "  --use-openssl-ca           use OpenSSL's CA store" }
+}
+function npm {
+	$script:npmCalls += [pscustomobject]@{
+		Arguments = $args -join " "
+		Options = $env:NODE_OPTIONS
+		ExtraCa = $env:NODE_EXTRA_CA_CERTS
+	}
+	$script:packagePresent = $script:npmExit -eq 0
+	$global:LASTEXITCODE = $script:npmExit
+}
+
+try {
+	$env:NODE_OPTIONS = "--max-old-space-size=4096"
+	$env:NODE_EXTRA_CA_CERTS = "C:\certs\approved-ca.pem"
+	Install-NpmPackage "@fsouza/prettierd@0.29.0"
+	Assert-Equal $script:npmCalls[0].Arguments "install -g @fsouza/prettierd@0.29.0" "npm package pin preserved"
+	Assert-Equal $script:npmCalls[0].Options "--max-old-space-size=4096 --use-system-ca" `
+		"Windows trust added without replacing existing Node options"
+	Assert-Equal $script:npmCalls[0].ExtraCa "C:\certs\approved-ca.pem" "extra CA configuration preserved"
+	Assert-Equal $env:NODE_OPTIONS "--max-old-space-size=4096" "Node options restored after success"
+
+	$env:NODE_OPTIONS = $null
+	Install-NpmPackage "test-package@1.0.0"
+	Assert-Equal $script:npmCalls[1].Options "--use-system-ca" "Windows trust works with no existing options"
+	Assert-Equal ([string]$env:NODE_OPTIONS) "" "unset Node options restored"
+
+	$env:NODE_OPTIONS = "--max-old-space-size=4096"
+	$script:nodeSystemCa = $false
+	Install-NpmPackage "test-package@1.0.0"
+	Assert-Equal $script:npmCalls[2].Options "--max-old-space-size=4096" "older Node receives no unsupported flag"
+
+	$script:nodeSystemCa = $true
+	$script:npmExit = 1
+	$message = $null
+	try { Install-NpmPackage "test-package@1.0.0" } catch { $message = $_.Exception.Message }
+	Assert-Equal ($message -match "failed \(exit 1\).*NODE_EXTRA_CA_CERTS.*Do not disable TLS") $true `
+		"npm failure includes safe certificate remediation"
+	Assert-Equal $env:NODE_OPTIONS "--max-old-space-size=4096" "Node options restored after npm failure"
+
+	$script:nodeExit = 1
+	$message = $null
+	try { Install-NpmPackage "test-package@1.0.0" } catch { $message = $_.Exception.Message }
+	Assert-Equal $message "node --help failed while checking certificate-store support" "failed capability probe reported"
+	Assert-Equal $script:npmCalls.Count 4 "npm not invoked after failed capability probe"
+	$script:nodeExit = 0
+
+	$script:npmPresent = $false
+	$message = $null
+	try { Install-NpmPackage "test-package@1.0.0" } catch { $message = $_.Exception.Message }
+	Assert-Equal $message "npm is required to install test-package@1.0.0" "missing npm reported"
+	$script:npmPresent = $true
+
+	$NpmDeps = @(@{ Cmd = "test-formatter"; Spec = "test-package@1.0.0" })
+	$Check = $true
+	$Missing = 0
+	$script:packagePresent = $false
+	Invoke-Expression $npmLoop.Extent.Text
+	Assert-Equal $Missing 1 "check mode reports missing npm packages"
+	Assert-Equal $script:npmCalls.Count 4 "check mode does not invoke npm"
+	Assert-Equal $env:NODE_OPTIONS "--max-old-space-size=4096" "check mode leaves Node options unchanged"
+
+	$Check = $false
+	$script:npmExit = 0
+	Invoke-Expression $npmLoop.Extent.Text
+	Assert-Equal $script:npmCalls.Count 5 "npm loop uses certificate-aware helper"
+	Assert-Equal $script:npmCalls[4].Options "--max-old-space-size=4096 --use-system-ca" "npm loop enables Windows trust"
+	Invoke-Expression $npmLoop.Extent.Text
+	Assert-Equal $script:npmCalls.Count 5 "installed npm packages left untouched"
+} finally {
+	$env:NODE_OPTIONS = $originalOptions
+	$env:NODE_EXTRA_CA_CERTS = $originalExtraCa
+}
 Write-Host "All installer regression checks passed."

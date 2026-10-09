@@ -152,6 +152,30 @@ function Install-ChocoPackage([string]$Package) {
 }
 
 
+function Install-NpmPackage([string]$Spec) {
+	if (-not (Find-Command "npm")) { Die "npm is required to install $Spec" }
+
+	$previousOptions = $env:NODE_OPTIONS
+	try {
+		$help = node --help | Out-String
+		if ($LASTEXITCODE -ne 0) { Die "node --help failed while checking certificate-store support" }
+		# Managed Windows machines often trust a corporate CA that Node's bundled roots lack.
+		if ($help -match "(?m)^\s+--use-system-ca\b") {
+			$env:NODE_OPTIONS = "$previousOptions --use-system-ca".Trim()
+		} else {
+			Warn "Node lacks --use-system-ca; for corporate certificates, update Node or set NODE_EXTRA_CA_CERTS to an IT-provided PEM CA bundle"
+		}
+
+		npm install -g $Spec
+		if ($LASTEXITCODE -ne 0) {
+			Die "npm install -g $Spec failed (exit $LASTEXITCODE). For certificate errors, ensure the corporate CA is trusted by Windows or set NODE_EXTRA_CA_CERTS to an IT-provided PEM CA bundle; see README.md. Do not disable TLS verification."
+		}
+	} finally {
+		$env:NODE_OPTIONS = $previousOptions
+	}
+}
+
+
 function Install-ClaudeCode {
 	# Anthropic's supported Windows installer:
 	# https://github.com/anthropics/claude-code#install-claude-code
@@ -292,9 +316,7 @@ foreach ($dep in $NpmDeps) {
 		continue
 	}
 
-	if (-not (Find-Command "npm")) { Die "npm is required to install $($dep.Spec)" }
-	npm install -g $dep.Spec
-	if ($LASTEXITCODE -ne 0) { Die "npm install -g $($dep.Spec) failed" }
+	Install-NpmPackage $dep.Spec
 
 	if (-not (Find-Command $dep.Cmd)) { Die "$($dep.Cmd) still not on PATH after installing $($dep.Spec)" }
 	Ok "$($dep.Cmd) installed"

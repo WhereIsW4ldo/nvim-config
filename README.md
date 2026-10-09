@@ -809,6 +809,31 @@ not yet installed. Tools already meeting the minimum are left untouched.
 .\install.ps1           # from an elevated PowerShell
 ```
 
+### npm certificate errors on managed Windows machines
+
+`UNABLE_TO_GET_ISSUER_CERT_LOCALLY` means Node cannot validate the registry's TLS
+certificate chain. A common cause is a corporate HTTPS-inspection proxy whose CA is
+trusted by Windows but absent from Node's bundled CA certificates.
+
+For npm installs, `install.ps1` enables Node's `--use-system-ca` when the installed
+Node supports it (Node **22.15+**, or **23.9+** and later release lines). This adds
+the Windows certificate store without disabling TLS verification. Existing
+`NODE_OPTIONS` are preserved and restored afterwards; `-Check` does not change them.
+Explicit npm `ca`/`cafile` settings still take precedence over Node's default CA
+list, so an outdated custom bundle may need updating.
+
+If the CA is not in the Windows store, or your Node version lacks this flag, obtain
+the approved root/intermediate CA bundle in **PEM format** from IT and retry:
+
+```powershell
+$env:NODE_EXTRA_CA_CERTS = "C:\certs\corporate-ca.pem"
+.\install.ps1
+```
+
+The file must exist before Node starts. This environment setting lasts for the
+current PowerShell session and extends Node's trusted CAs. Never work around the
+error with `npm config set strict-ssl false` or `NODE_TLS_REJECT_UNAUTHORIZED=0`.
+
 lazy.nvim then bootstraps itself on first launch and installs plugins from
 `lazy-lock.json`. Manage them with `:Lazy`.
 
