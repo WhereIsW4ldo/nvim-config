@@ -176,14 +176,6 @@ function Install-NpmPackage([string]$Spec) {
 }
 
 
-function Install-ClaudeCode {
-	# Anthropic's supported Windows installer:
-	# https://github.com/anthropics/claude-code#install-claude-code
-	Invoke-Expression (Invoke-RestMethod "https://claude.ai/install.ps1")
-	Update-SessionPath
-}
-
-
 $Missing = 0
 $Manual  = @()
 
@@ -320,23 +312,6 @@ foreach ($dep in $NpmDeps) {
 
 	if (-not (Find-Command $dep.Cmd)) { Die "$($dep.Cmd) still not on PATH after installing $($dep.Spec)" }
 	Ok "$($dep.Cmd) installed"
-}
-
-# ── Claude Code ─────────────────────────────────────────────────────────────────
-Heading "Claude Code"
-$claude = Find-Command "claude"
-if ($claude) {
-	Ok "claude present ($($claude.Source))"
-} elseif ($Check) {
-	Bad "claude missing -- irm https://claude.ai/install.ps1 | iex"
-	$Missing++
-} else {
-	Install-ClaudeCode
-	$claude = Find-Command "claude"
-	if (-not $claude) {
-		Die "Claude Code installed but claude is not on PATH -- restart PowerShell and run claude doctor"
-	}
-	Ok "claude installed ($($claude.Source))"
 }
 
 # ── .NET global tools ────────────────────────────────────────────────────────────

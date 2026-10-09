@@ -428,78 +428,6 @@ Verify:
 `<leader>l` re-runs the linters for the current buffer, which is the quickest way to
 confirm a freshly installed one is now being found.
 
-### `claude` — required by `lua/plugin/ai.lua`
-
-[claudecode.nvim](https://github.com/coder/claudecode.nvim) is pure Lua and installs
-nothing itself. It stands up a WebSocket server, writes `~/.claude/ide/<port>.lock`, and
-launches the Claude Code CLI pointed at it — the same discovery handshake Anthropic's own
-VS Code and JetBrains extensions use. The CLI is therefore the *only* external dependency,
-and without it `:ClaudeCode` opens a terminal that immediately exits.
-
-Use Anthropic's native installer:
-
-```sh
-curl -fsSL https://claude.ai/install.sh | bash
-```
-
-On Windows, `install.ps1` checks for `claude` and, when it is missing, runs Anthropic's
-official native installer:
-
-```powershell
-irm https://claude.ai/install.ps1 | iex
-```
-
-The native installers are the current upstream recommendation; npm installation is
-deprecated. An existing `claude` on `PATH` is left untouched.
-
-Notes:
-
-- Authentication reuses your existing `claude /login` session. No `ANTHROPIC_API_KEY`.
-- `claude doctor` reports installation and PATH problems.
-
-Verify:
-
-```sh
-command -v claude && claude --version
-```
-
-On Windows, use `Get-Command claude` and `claude --version`.
-
-`:ClaudeCodeStatus` is the in-editor version — it reports whether the WebSocket server is
-up and whether a CLI has connected to it.
-
-#### Why not ACP
-
-This replaced [agentic.nvim](https://github.com/carlos-algms/agentic.nvim), which drove the
-same CLI over the **Agent Client Protocol**, through the
-`@agentclientprotocol/claude-agent-acp` npm bridge. ACP is vendor-neutral, so it carries
-roughly the intersection of what every agent does rather than everything Claude Code does,
-and the bridge lags each CLI release.
-agentic's own tracker shows the shape of it: restored sessions losing their mode and model
-([#310](https://github.com/carlos-algms/agentic.nvim/issues/310)), and no way to surface
-Claude Code's `AskUserQuestion` because ACP does not model it
-([#274](https://github.com/carlos-algms/agentic.nvim/issues/274)).
-
-Here the real CLI runs in the terminal, so there is nothing to fall behind on — mode
-cycling, `/model`, skills and whatever ships next all work because none of it is
-reimplemented. The npm bridge is gone rather than replaced.
-
-What that costs, since all three were configured deliberately before:
-
-- **One session at a time.** agentic ran several concurrently and kept them alive behind a
-  closed window. `<leader>ar` picks a *different* session rather than adding one. Tracked
-  upstream but unimplemented ([#187](https://github.com/coder/claudecode.nvim/issues/187),
-  [#177](https://github.com/coder/claudecode.nvim/issues/177),
-  [#147](https://github.com/coder/claudecode.nvim/issues/147)).
-- **No Neovim-native chat buffer,** so no foldable tool calls — the CLI renders its own
-  output. Diffs are the exception: those come over the protocol and open as real Neovim
-  windows, accepted with `:w` and rejected with `:q`.
-- **Model switching is launch-time.** `<leader>am` restarts the CLI with `--model`;
-  `/model` inside the terminal is the live route.
-
-Diagnostics are no longer pushed either, which is a change of direction rather than a loss:
-Claude pulls them itself through the MCP `getDiagnostics` tool whenever it wants them.
-
 ### `wl-clipboard` — the system clipboard, Wayland only
 
 Not a plugin dependency — an editor one. `lua/config/vim.lua` sets
@@ -508,9 +436,6 @@ Wayland session `wl-copy`/`wl-paste` is the first provider Neovim looks for. Wit
 Neovim falls back to the X11 tools (`xclip`, `xsel`) via XWayland if they happen to be
 installed, and to nothing at all if they are not — in which case yanking silently does not
 reach any other application. `:checkhealth provider` reports which one was picked.
-
-(It was previously listed for agentic.nvim's image paste, which shelled out to `wl-paste`
-directly. That plugin is gone; the clipboard reason is the one that was always underneath.)
 
 ```sh
 brew install wl-clipboard          # or: sudo apt install wl-clipboard
@@ -633,7 +558,7 @@ sections: `W` watches, `S` scopes, `B` breakpoints, `T` threads, `R` REPL, `E` e
 `lua/config/vim.lua`) out of `mini.statusline`:
 
 ```
- Normal   main ( M)  #3 +2 ~6 󰰎 +  init.lua  Claude 5h 47% (resets 1h09m) · 7d 5%  󰢱 lua utf-8[unix] 344B  1|12│1|1
+ Normal   main ( M)  #3 +2 ~6 󰰎 +  init.lua  󰢱 lua utf-8[unix] 344B  1|12│1|1
 ```
 
 `mini.nvim` is installed whole rather than the single-module `nvim-mini/mini.statusline`
@@ -652,9 +577,8 @@ own `setup()` runs, so the rest costs disk and nothing else. Four of them are se
   **[Git hunks](#git-hunks)**.
 
 **Icons assume the terminal font carries the Nerd Font range.** They are worth about ten
-columns over the `Git` / `Diag` / `LSP` word forms, and those columns matter: the Claude
-section is the first thing truncation drops. Set `use_icons = false` in the spec to go
-back to words.
+columns over the `Git` / `Diag` / `LSP` word forms. Set `use_icons = false` in the spec
+to go back to words.
 
 `section_diff` reads `vim.b.minidiff_summary_string or vim.b.gitsigns_status`, so the
 counts would survive swapping mini.diff for gitsigns without touching this file.
@@ -662,67 +586,6 @@ counts would survive swapping mini.diff for gitsigns without touching this file.
 Adding a plugin catppuccin knows about does **not** invalidate its compiled theme cache, so
 new highlight groups keep their fallback colours until `:Catppuccin compile` is run or
 `~/.cache/nvim/catppuccin` is deleted. Worth doing as the last step of any plugin change.
-
-### The Claude plan-usage segment
-
-`lua/config/claude-segment.lua` renders the right-aligned readout, returning
-`text, highlight_group` — the same shape `MiniStatusline.section_*` uses, so the bar drops
-it into a group list. It depends on no plugin, which is what lets it live in `config/`.
-It dims below 70%, turns `DiagnosticWarn` at 70 and `DiagnosticError` at 90, and is the
-first section dropped when the window narrows past 120 columns.
-
-`lua/config/claude-usage.lua` supplies the numbers, from two sources, cheapest first:
-
-1. **`~/.claude.json`'s `cachedUsageUtilization`** — what the CLI persists after its own
-   fetches. Free, needs no token, available immediately at startup. But it goes stale: the
-   CLI will not rewrite it more often than every 5 minutes, treats it as valid for a full
-   hour, and only a real CLI session ever writes it. That last point got better with the
-   move off ACP: `lua/plugin/ai.lua` now launches the actual `claude` binary in a terminal,
-   so an editing session keeps the cache warm where an ACP-only one might never have
-   touched it.
-2. **`GET https://api.anthropic.com/api/oauth/usage`** — the endpoint the CLI's own
-   `fetchUtilization` calls, authenticated with the OAuth token in
-   `~/.claude/.credentials.json` (handed to `curl` over stdin via `--config -`, so it never
-   appears in the process list).
-
-The cache is adopted whenever it is ahead of what we hold, and a request is only spent when
-the cache has not kept up — so no request at all while something else keeps it warm, and
-otherwise a 5-minute cadence to start with, matching the CLI's own throttle.
-
-**This endpoint is rate-limited: polling it every minute earns an HTTP 429.** It advertises
-no budget, though — a 200 carries no `Retry-After` and no `anthropic-ratelimit-*` header —
-so 5 minutes is an educated starting point, not a known-safe rate. Rather than trusting it,
-the cadence is self-tuning: **every 429 doubles the interval for the rest of the session and
-it never drops back**, up to an hour. Spring-back would just earn another 429 next cycle.
-Ordinary failures — a dropped connection, an expired token — delay the next attempt without
-touching the cadence, since they say nothing about the rate. `:ClaudeUsage` clears the delay
-for an immediate retry and reports the interval in force.
-
-A failed refresh never discards the last good reading — it appends `!` and dims, so a
-transient 429 shows slightly old percentages rather than blanking the line. Any reading
-older than 15 minutes is dimmed whatever it says.
-
-The obvious route does not work: those percentages reach a **terminal** statusline through
-the CLI's stdin payload (`rate_limits.five_hour.used_percentage`) and through nothing else.
-Hook payloads carry only `session_id`, `transcript_path`, `cwd`, `prompt_id`,
-`permission_mode`, `agent_id`, `agent_type` and `effort`. That payload goes to whatever
-`statusLine` command is configured in Claude's own `settings.json` — a separate process,
-writing to the CLI's own bar inside its terminal, with no route into Neovim's. So even now
-that a real CLI session runs in a split, the numbers still have to be fetched here rather
-than received.
-
-Two things to know:
-
-- **The endpoint is internal.** The CLI's own schema for it carries the note *"the response
-  shape may change"*. When the readout goes blank or wrong, `:ClaudeUsageDebug` opens the
-  raw JSON in a scratch buffer; `:ClaudeUsage` forces a refresh and echoes the parsed state.
-  The response also contains codenamed windows (`tangelo`, `nimbus_quill`, …) that this
-  config deliberately ignores.
-- **Neovim never renews the token.** That is the refresh-token flow, and it belongs to the
-  CLI. An expired token shows as `Claude HTTP 401` — or as the previous reading plus `!` —
-  until the CLI renews it on its own next request.
-
-Needs `curl`, which `install.sh` already installs.
 
 ## Git hunks
 
@@ -765,10 +628,7 @@ Two settings are not the defaults, both deliberate:
 
 ## Terminal key support
 
-**Nothing here requires a particular terminal any more.** `<C-CR>` used to — it submitted
-the agentic.nvim prompt, and legacy terminals cannot encode it, since `Ctrl+Enter` sends the
-same `0x0D` byte as plain `Enter`. That prompt buffer is gone with the move to
-claudecode.nvim, which types into the CLI's own TUI where plain `Enter` submits.
+**Nothing here requires a particular terminal.**
 
 The one key still sensitive to the **kitty keyboard protocol** is `<C-BS>`, and it is
 already handled: `lua/config/keymap.lua` binds both spellings, because protocol-speaking

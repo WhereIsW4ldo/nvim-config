@@ -41,7 +41,6 @@ return {
 	-- module has to be required and set up by name.
 	config = function()
 		local statusline = require("mini.statusline")
-		local claude     = require("config.claude-segment")
 
 		-- Purely the data source for `section_git` above -- it tracks the branch and status
 		-- into buffer-local variables. It also registers a `:Git` command, which is
@@ -49,9 +48,7 @@ return {
 		require("mini.git").setup()
 
 		-- `use_icons` is left at its default of true, which is what turns `Git`, `Diag` and
-		-- `LSP` into single-cell glyphs. That is worth about ten columns, and those columns
-		-- decide something: the Claude section below is the first thing truncation drops, so
-		-- they are the difference between it surviving a vertical split and not.
+		-- `LSP` into single-cell glyphs, saving about ten columns.
 		--
 		-- `section_fileinfo`'s filetype icon is the one part that needs a provider. Without
 		-- this line `ensure_get_icon` looks for `MiniIcons`, falls back to
@@ -75,20 +72,12 @@ return {
 					local location      = statusline.section_location({ trunc_width = 75, })
 					local search        = statusline.section_searchcount({ trunc_width = 75, })
 
-					-- First thing dropped on a narrow window: it is the longest item on the
-					-- line and the only one that is not about the buffer in front of you.
-					local usage, usage_hl = "", nil
-					if not statusline.is_truncated(120) then
-						usage, usage_hl = claude.section()
-					end
-
 					return statusline.combine_groups({
 						{ hl = mode_hl,                  strings = { mode, }, },
 						{ hl = "MiniStatuslineDevinfo",  strings = { git, diff, diagnostics, lsp, }, },
 						"%<", -- Truncate here first
 						{ hl = "MiniStatuslineFilename", strings = { filename, }, },
 						"%=", -- Right-align everything below
-						{ hl = usage_hl,                 strings = { usage, }, },
 						{ hl = "MiniStatuslineFileinfo", strings = { fileinfo, }, },
 						{ hl = mode_hl,                  strings = { search, location, }, },
 					})

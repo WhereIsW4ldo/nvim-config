@@ -12,13 +12,6 @@ return {
 	"MeanderingProgrammer/render-markdown.nvim",
 
 	-- Plain markdown files, and nothing else.
-	--
-	-- This used to carry `AgenticChat` here and in `file_types`, plus a FileType
-	-- autocommand starting the treesitter highlighter on it -- agentic.nvim's chat buffer
-	-- rendered its own markdown and deliberately skipped the highlighter, which left
-	-- emphasis markers unconcealed. All of it went with the move to claudecode.nvim
-	-- (`lua/plugin/ai.lua`): Claude now renders inside its own CLI TUI in a terminal
-	-- buffer, which this plugin does not and should not touch.
 	ft = "markdown",
 
 	---@module "render-markdown"

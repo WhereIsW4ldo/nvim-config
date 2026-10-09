@@ -16,7 +16,6 @@ return {
 		-- Only prefix *group* names need declaring; individual mappings are picked up
 		-- automatically. Add a line here whenever a new `<leader>` namespace appears.
 		spec = {
-			{ "<leader>a", group = "AI", },
 			{ "<leader>c", group = "C#/.NET", },
 			{ "<leader>d", group = "Diagnostics", },
 			{ "<leader>D", group = "Database", },

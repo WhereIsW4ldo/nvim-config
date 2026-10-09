@@ -33,10 +33,10 @@ $unixInstaller = Get-Content (Join-Path (Split-Path $PSScriptRoot) "install.sh")
 Assert-Equal ($unixInstaller -match '(?m)^\s*"sqlcmd\|') $false `
 	"sqlcmd is not a required Unix dependency"
 $windowsInstaller = Get-Content $installer -Raw
-Assert-Equal ($windowsInstaller -match [regex]::Escape('Invoke-RestMethod "https://claude.ai/install.ps1"')) $true `
-	"Windows installer uses Anthropic's native Claude Code installer"
-Assert-Equal ($windowsInstaller -match 'Bad "claude missing -- irm https://claude.ai/install.ps1 \| iex"') $true `
-	"check mode reports the missing Claude Code CLI"
+Assert-Equal ($windowsInstaller -match '(?i)claude') $false `
+	"Windows installer neither installs nor requires Claude Code"
+Assert-Equal ($unixInstaller -match '(?i)\bclaude\b(?!\.md)') $false `
+	"Unix installer neither installs nor requires Claude Code"
 
 # Synthetic dependency for exercising version detection and the installer loop.
 $sqlcmdDep = @{ Cmd = "sqlcmd"; Min = "1.5.0"; Package = "sqlcmd"; Probe = { sqlcmd --version } }
