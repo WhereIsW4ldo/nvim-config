@@ -119,9 +119,8 @@ return {
 		formatters = {
 			-- conform ships `sqlfluff` with `require_cwd = true`, so it runs only where a
 			-- `.sqlfluff`, `pyproject.toml`, `setup.cfg`, `pep8.ini` or `tox.ini` sits above
-			-- the file. Right for a project and wrong for the main SQL consumer here:
-			-- `vim-dadbod-ui` writes its query buffers into a temp directory where no such
-			-- root exists, so formatting a query would silently do nothing at all.
+			-- the file. Turning it off keeps formatting available for SQL buffers outside a
+			-- project root as well.
 			--
 			-- Turning it off does not lose project config -- sqlfluff still discovers a
 			-- project's own `.sqlfluff` by walking up from the file it is given, and falls
@@ -135,7 +134,7 @@ return {
 			-- trips it constantly is `AM04`, "query produces an unknown number of result
 			-- columns", which fires on `SELECT *` and is unfixable by definition: sqlfluff
 			-- cannot know the columns. `SELECT *` is most of ad-hoc querying, and it is
-			-- literally what `vim-dadbod-ui`'s own table helpers generate.
+			-- common in ad-hoc SQL.
 			--
 			-- Accepting 1 is safe rather than merely convenient, verified both ways: every
 			-- diagnostic sqlfluff emits goes to *stderr*, and stdout is always SQL -- the

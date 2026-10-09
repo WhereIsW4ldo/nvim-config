@@ -7,9 +7,10 @@
 	The Windows counterpart of install.sh. Same tables, same idempotence: tools that already
 	meet the minimum version are left alone, wherever they came from.
 
-	Chocolatey stands in for Homebrew. winget would be the obvious choice, but it is commonly
-	disabled by Group Policy on managed machines, and Chocolatey carries every CLI here except
-	luacheck. Installing a Chocolatey package needs an elevated shell; -Check does not.
+	Chocolatey stands in for Homebrew for most native tools. winget would be the obvious
+	choice, but it is commonly disabled by Group Policy on managed machines. Python, npm,
+	.NET and vendor-native installers are used where they are the supported route.
+	Installing a Chocolatey package needs an elevated shell; -Check does not.
 
 	The reasoning behind each dependency lives in install.sh -- this file only records what
 	differs on Windows. Keep the two tables in step when adding a dependency.
@@ -52,9 +53,6 @@ $ChocoDeps = @(
 	@{ Cmd = "curl";        Min = $null;    Package = "curl" }
 	@{ Cmd = "tar";         Min = $null;    Package = $null;         Manual = "ships with Windows 10 1803 and later -- update Windows" }
 	@{ Cmd = "7z";          Min = $null;    Package = "7zip" }
-	# Must be go-sqlcmd, not the legacy ODBC binary -- see install.sh.
-	@{ Cmd = "sqlcmd";      Min = "1.5.0";  Package = "sqlcmd";      Probe = { sqlcmd --version | Select-Object -First 1 } }
-	@{ Cmd = "az";          Min = $null;    Package = "azure-cli" }
 	# Linters, for `lua/plugin/lint.lua`.
 	@{ Cmd = "luacheck";    Min = $null;    Package = $null;         Manual = "no Chocolatey package -- put luacheck.exe from https://github.com/lunarmodules/luacheck/releases on PATH" }
 	@{ Cmd = "tflint";      Min = $null;    Package = "tflint" }
@@ -102,13 +100,20 @@ function Find-Command([string[]]$Names) {
 
 
 function Get-ProbedVersion([scriptblock]$Probe) {
+	$global:LASTEXITCODE = 0
 	try {
-		$out = (& $Probe 2>$null | Out-String)
+		$out = (& $Probe 2>&1 | Out-String)
 	} catch {
-		return "0"
+		Warn "version probe failed: $($_.Exception.Message)"
+		return $null
+	}
+	if ($LASTEXITCODE -ne 0) {
+		Warn "version probe failed (exit $LASTEXITCODE): $($out.Trim())"
+		return $null
 	}
 	if ($out -match "(\d+(?:\.\d+){1,3})") { return $Matches[1] }
-	return "0"
+	Warn "version probe returned no version: $($out.Trim())"
+	return $null
 }
 
 
@@ -139,9 +144,18 @@ function Update-SessionPath {
 function Install-ChocoPackage([string]$Package) {
 	if (-not (Find-Command "choco")) { Die "Chocolatey is required to install $Package" }
 	if (-not (Test-Admin)) { Die "installing $Package needs an elevated PowerShell -- re-run as Administrator" }
-	choco install $Package -y --no-progress
+	# upgrade also installs missing packages; install alone leaves old versions untouched.
+	choco upgrade $Package -y --no-progress
 	# 3010 and 1641 are "succeeded, reboot required".
-	if ($LASTEXITCODE -notin 0, 1641, 3010) { Die "choco install $Package failed (exit $LASTEXITCODE)" }
+	if ($LASTEXITCODE -notin 0, 1641, 3010) { Die "choco upgrade $Package failed (exit $LASTEXITCODE)" }
+	Update-SessionPath
+}
+
+
+function Install-ClaudeCode {
+	# Anthropic's supported Windows installer:
+	# https://github.com/anthropics/claude-code#install-claude-code
+	Invoke-Expression (Invoke-RestMethod "https://claude.ai/install.ps1")
 	Update-SessionPath
 }
 
@@ -197,7 +211,11 @@ foreach ($dep in $ChocoDeps) {
 			Ok "$label $current (>= $($dep.Min))"
 			continue
 		}
-		Warn "$label $current is older than $($dep.Min)"
+		if ($current) {
+			Warn "$label $current is older than $($dep.Min)"
+		} else {
+			Warn "$label version could not be determined ($($found.Source))"
+		}
 	} else {
 		Warn "$label not found"
 	}
@@ -217,13 +235,19 @@ foreach ($dep in $ChocoDeps) {
 
 	Install-ChocoPackage $dep.Package
 
-	if (-not (Find-Command $dep.Cmd)) { Die "$label still not on PATH after installing $($dep.Package)" }
+	$found = Find-Command $dep.Cmd
+	if (-not $found) { Die "$label still not on PATH after installing $($dep.Package)" }
 	if (-not $dep.Min) {
 		Ok "$label installed"
 		continue
 	}
 	$current = Get-ProbedVersion $dep.Probe
-	if (-not (Test-VersionGe $current $dep.Min)) { Die "$label is $current after install, still below $($dep.Min)" }
+	if (-not $current) {
+		Die "$label version could not be determined after install ($($found.Source)). Check Get-Command $(@($dep.Cmd)[0]) -All for a shadowing or incompatible executable."
+	}
+	if (-not (Test-VersionGe $current $dep.Min)) {
+		Die "$label is $current after install, still below $($dep.Min) ($($found.Source)). Check PATH precedence with Get-Command $(@($dep.Cmd)[0]) -All."
+	}
 	Ok "$label $current installed"
 }
 
@@ -274,6 +298,23 @@ foreach ($dep in $NpmDeps) {
 
 	if (-not (Find-Command $dep.Cmd)) { Die "$($dep.Cmd) still not on PATH after installing $($dep.Spec)" }
 	Ok "$($dep.Cmd) installed"
+}
+
+# ── Claude Code ─────────────────────────────────────────────────────────────────
+Heading "Claude Code"
+$claude = Find-Command "claude"
+if ($claude) {
+	Ok "claude present ($($claude.Source))"
+} elseif ($Check) {
+	Bad "claude missing -- irm https://claude.ai/install.ps1 | iex"
+	$Missing++
+} else {
+	Install-ClaudeCode
+	$claude = Find-Command "claude"
+	if (-not $claude) {
+		Die "Claude Code installed but claude is not on PATH -- restart PowerShell and run claude doctor"
+	}
+	Ok "claude installed ($($claude.Source))"
 }
 
 # ── .NET global tools ────────────────────────────────────────────────────────────

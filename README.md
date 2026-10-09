@@ -11,13 +11,13 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 |---|---|---|
 | Neovim **0.12+** | Config targets modern APIs (`vim.lsp.config`, `vim.hl`, built-in EditorConfig) | `nvim --version` |
 | Git **2.19+** | lazy.nvim uses partial clones (`--filter=blob:none`) | |
-| Node **22+** | The global npm packages below, and the Claude Code CLI on a fresh machine | |
+| Node **22+** | The global npm packages below | |
 | lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
 | tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
-| A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential` |
+| A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential`; Windows: MinGW or Visual Studio Build Tools |
 | .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`: the `EasyDotnet` global tool, the Roslyn server it manages, and the `dotnet` verbs themselves | `dotnet --version` |
 | A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
-| `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Present on any base Linux except sometimes `unzip` |
+| `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Linux uses these Unix tools; Windows uses PowerShell, Git, GNU tar, and 7-Zip-compatible extraction (covered by `install.ps1`) |
 
 ## External dependencies
 
@@ -87,9 +87,6 @@ goes to `sqlfluff` itself (see `lua/plugin/format.lua`), so the tool that format
 tool that judges are the same one and cannot disagree by construction. `sqlls` was never an option:
 sql-language-server 1.7.1 reaches into a `vscode-languageserver-protocol` subpath that
 modern Node blocks via `exports`, so it exits 1 on startup.
-
-Schema-aware SQL completion is not lost with it — it comes from `vim-dadbod-completion`,
-and unlike `sqls` it covers the Azure connection too. See below.
 
 One more gap worth knowing about:
 
@@ -330,8 +327,8 @@ npm i -g eslint_d@15.0.3 markdownlint-cli2@0.23.2
   This machine is set up two-tier, since the usual dialect is SQL Server and personal
   projects are Postgres. The machine-wide default lives **outside this repo**, at
   `~/.config/sqlfluff/.sqlfluff` — it cannot live in the repo, because sqlfluff resolves
-  config by walking up from the file it is handed, and the buffers that matter most are
-  vim-dadbod-ui's, written into a temp directory nowhere near here.
+  config by walking up from the file it is handed, and SQL buffers may live outside the
+  repository.
 
   **`install.sh` writes that file**, so a fresh machine is not left half-configured. It is
   the one thing in the script that is a config file rather than a binary, which is why it
@@ -431,105 +428,6 @@ Verify:
 `<leader>l` re-runs the linters for the current buffer, which is the quickest way to
 confirm a freshly installed one is now being found.
 
-### `sqlcmd` and `az` — required by `lua/plugin/database.lua`
-
-[vim-dadbod](https://github.com/tpope/vim-dadbod) has no SQL Server driver of its own: its
-adapter builds an argv and shells out to `sqlcmd` for every query, and again for the schema
-introspection that feeds completion. Without it the drawer opens, connects to nothing, and
-reports a command-not-found.
-
-```sh
-brew install sqlcmd azure-cli
-```
-
-**It has to be [`microsoft/go-sqlcmd`](https://github.com/microsoft/go-sqlcmd), the Go
-rewrite — not the legacy ODBC `sqlcmd` from `mssql-tools`/`mssql-tools18`, which carries the
-same command name.** Only the rewrite implements `--authentication-method`, and that one
-flag is the whole reason this stack was chosen: it is what lets an Azure SQL connection
-authenticate as you without a password.
-
-The two connection shapes, added with `:DBUIAddConnection`:
-
-```
-sqlserver://sa:PASSWORD@localhost:1433/DB?trustServerCertificate=true
-sqlserver://SERVER.database.windows.net/DB?authentication=ActiveDirectoryAzCli&encrypt=true
-```
-
-`trustServerCertificate=true` becomes `-C` and is not optional for a Docker instance —
-go-sqlcmd negotiates encryption by default and the container's certificate is self-signed.
-`authentication=ActiveDirectoryAzCli` is passed straight through to `--authentication-method`,
-which resolves to `azidentity.NewAzureCLICredential` and spawns `az account get-access-token`.
-That is why **`az` is a dependency too, and why `az login` has to be current** — the token is
-fetched per connection and never stored. Neither URL is committed: `:DBUIAddConnection` writes
-to `~/.local/share/db_ui`, outside this repository.
-
-Verify:
-
-```sh
-sqlcmd --version     # must print v1.x — the legacy binary has no --version flag at all
-az account show      # must succeed, or the Azure connection cannot authenticate
-```
-
-`:DBUILastQueryInfo` is the in-editor version: it prints the exact command that was run.
-
-#### Result formatting, and a script that runs before every query
-
-dadbod builds a fixed argv and passes `sqlcmd` no formatting flags, with no hook to add
-any. It does not need one: go-sqlcmd reads its scripting variables from the environment
-(`InitializeVariables(args.useEnvVars())`, true unless `-X` is passed, which dadbod never
-does), so `lua/plugin/database.lua` sets them with `vim.env` and needs neither a `$PATH`
-wrapper script nor a `g:db_adapter_sqlserver` override — the two answers the upstream
-issue threads settle on.
-
-| Variable | Set to | Default | Why |
-|---|---|---|---|
-| `SQLCMDMAXFIXEDTYPEWIDTH` | `0` (unlimited) | `0` (unlimited) | Governs **declared-width** types — `char(n)`, `varchar(n)`, `nvarchar(n)`. Left unlimited so nothing is ever cut; the padding it brings is taken back out by `lua/config/dbout-format.lua` below. |
-| `SQLCMDMAXVARTYPEWIDTH` | `100` | `256` | The lesser half: only the `(max)` types plus `xml`/`text`/`image`. Stays a real cap — those types have no declared bound, so unlimited would mean one row can be megabytes wide on a single line. |
-| `SQLCMDINI` | `sql/preamble.sql` | unset | A script run before every query. |
-
-Both are hard truncations rather than wrapping, and go-sqlcmd prints no ellipsis when it
-cuts — a clipped cell looks exactly like a short one. That is why the fixed one is
-unlimited: for a declared-width type "unlimited" is still bounded, by the declaration, so
-the only cost is padding. The cap also reaches the drawer and completion, whose schema
-queries run through the same variables, so a low value silently shortened long table and
-column names there too. `SQLCMDMAXVARTYPEWIDTH` is now the one place a value can still be
-cut without saying so.
-
-#### Fitting result columns to their data
-
-go-sqlcmd has no autofit-to-data option — its only width controls are the two caps above,
-both applied from the column's declared type before a single row is read. The two flags
-that could help indirectly, `-W` (trim trailing spaces) and `-F` (output format), are the
-only formatting flags with no scripting variable behind them, and dadbod's argv has no hook
-to add flags — so `vim.env` cannot reach them.
-
-`lua/config/dbout-format.lua` does it afterwards instead. On `BufReadPost *.dbout` it
-re-measures each column against the values actually in it and rewrites header, rule and
-rows together, so a `varchar(200)` column holding a 35-character name is 35 wide on screen.
-Numeric columns keep the right alignment sqlcmd gave them.
-
-It works off the `----- ----` rule line, which states every column's exact start and end,
-so nothing is guessed — and other adapters' output is untouched for free, since postgres
-rules with `-----+-----` and mysql with `+-----+`, neither of which parses as a rule line.
-A block whose rows do not match that geometry — a value containing a newline is the
-realistic cause — is left exactly as sqlcmd printed it rather than reflowed into nonsense.
-The buffer is rewritten, never the file on disk, and it is left unmodified so nothing ever
-prompts to save it.
-
-`sql/preamble.sql` is in this repository, tracked, and ships commented out. Uncomment what
-you want — `SET NOCOUNT ON;` to drop the `(N rows affected)` lines, or the isolation-level
-and lock-timeout pair for exploring a production database without blocking anyone. Two
-rules apply: it runs before **every** `sqlcmd` invocation, including the schema
-introspection behind completion, and it must therefore produce **no output** — a stray
-`PRINT` corrupts the table list rather than merely looking untidy.
-
-Note `vim.env` is Neovim's whole environment, so a `sqlcmd` run by hand in the built-in
-terminal inherits all three too.
-
-Vertical (one column per line) output is **not** available: `<Plug>(DBUI_ToggleResultLayout)`
-is Postgres/MySQL/BigQuery only — `autoload/db_ui/schemas.vim` gives those a `layout_flag`
-and gives SQL Server none.
-
 ### `claude` — required by `lua/plugin/ai.lua`
 
 [claudecode.nvim](https://github.com/coder/claudecode.nvim) is pure Lua and installs
@@ -538,32 +436,34 @@ launches the Claude Code CLI pointed at it — the same discovery handshake Anth
 VS Code and JetBrains extensions use. The CLI is therefore the *only* external dependency,
 and without it `:ClaudeCode` opens a terminal that immediately exits.
 
-Two install routes, both fine:
+Use Anthropic's native installer:
 
 ```sh
-curl -fsSL https://claude.ai/install.sh | bash    # Anthropic's native installer -> ~/.local/bin
-npm i -g @anthropic-ai/claude-code@2.1.231        # what install.sh uses
+curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-`install.sh` takes the npm route because Homebrew ships `claude-code` as a **cask**, and
-casks are macOS-only — `brew install claude-code` fails outright on Linux. It skips the
-entry entirely when `claude` is already on `PATH`, so an existing install of either shape
-is left alone rather than shadowed. The pinned version is a floor for a fresh machine, not
-a ceiling: Claude Code updates itself after first run, so that number goes stale by design.
+On Windows, `install.ps1` checks for `claude` and, when it is missing, runs Anthropic's
+official native installer:
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+```
+
+The native installers are the current upstream recommendation; npm installation is
+deprecated. An existing `claude` on `PATH` is left untouched.
 
 Notes:
 
 - Authentication reuses your existing `claude /login` session. No `ANTHROPIC_API_KEY`.
-- If you have run `claude migrate-installer`, the binary moves to `~/.claude/local/claude`
-  and is reached through a shell alias that Neovim does not see. Set
-  `terminal_cmd = "~/.claude/local/claude"` in `lua/plugin/ai.lua`'s `opts` if so.
-  `claude doctor` reports which installation you have.
+- `claude doctor` reports installation and PATH problems.
 
 Verify:
 
 ```sh
 command -v claude && claude --version
 ```
+
+On Windows, use `Get-Command claude` and `claude --version`.
 
 `:ClaudeCodeStatus` is the in-editor version — it reports whether the WebSocket server is
 up and whether a CLI has connected to it.
@@ -901,6 +801,9 @@ often disabled by Group Policy). Installing packages needs an elevated shell; `-
 not. `luacheck` has no Chocolatey package and is reported for manual install, and
 `sqlfluff` comes from pip.
 
+Missing or outdated tools use `choco upgrade`, which also installs packages that are
+not yet installed. Tools already meeting the minimum are left untouched.
+
 ```powershell
 .\install.ps1 -Check    # exits non-zero and names whatever is missing
 .\install.ps1           # from an elevated PowerShell
@@ -916,6 +819,13 @@ prefix detection for both Apple silicon and Intel) but **untested** — it will 
 proceed. Other platforms are refused outright.
 
 ## Verifying a change
+
+Windows installer regression checks (no package installs or elevation required):
+
+```powershell
+powershell -NoProfile -File .\tests\install.Tests.ps1
+pwsh -NoProfile -File .\tests\install.Tests.ps1
+```
 
 ```sh
 nvim --headless "+qa"; echo "exit=$?"                            # loads clean
