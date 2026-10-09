@@ -42,7 +42,9 @@ $ChocoDeps = @(
 	@{ Cmd = "lazygit";     Min = "0.40.0"; Package = "lazygit";     Probe = { if ((lazygit --version) -match "(?:^|, )version=([\d.]+)") { $Matches[1] } } }
 	@{ Cmd = "tree-sitter"; Min = "0.26.1"; Package = "tree-sitter"; Probe = { tree-sitter --version } }
 	# Any compiler the `cc` crate can drive: MSVC's `cl`, or gcc/clang. mingw is the
-	# lightest to install; Visual Studio Build Tools satisfies this just as well.
+	# lightest to install; Visual Studio Build Tools satisfies this just as well. The CLI
+	# is an MSVC build and so only reaches gcc/clang through `CC`, which
+	# `lua/plugin/treesitter.lua` sets.
 	@{ Cmd = @("cl", "gcc", "clang"); Min = $null; Package = "mingw" }
 	@{ Cmd = "dotnet";      Min = "10.0.0"; Package = "dotnet-sdk";  Probe = { dotnet --version } }
 	@{ Cmd = "cargo";       Min = $null;    Package = "rustup.install" }

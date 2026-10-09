@@ -14,7 +14,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | Node **22+** | The global npm packages below | |
 | lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
 | tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
-| A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential`; Windows: MinGW or Visual Studio Build Tools |
+| A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential`; Windows: MinGW or Visual Studio Build Tools (with MinGW, `lua/plugin/treesitter.lua` sets `CC=gcc` — the CLI otherwise only tries `cl.exe`) |
 | .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`: the `EasyDotnet` global tool, the Roslyn server it manages, and the `dotnet` verbs themselves | `dotnet --version` |
 | A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
 | `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Linux uses these Unix tools; Windows uses PowerShell, Git, GNU tar, and 7-Zip-compatible extraction (covered by `install.ps1`) |

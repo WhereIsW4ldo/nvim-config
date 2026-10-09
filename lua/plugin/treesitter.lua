@@ -84,6 +84,24 @@ local function filetypes()
 end
 
 
+-- The Windows tree-sitter CLI is an MSVC build, and the `cc` crate it compiles with
+-- defaults to `cl.exe` for that target no matter what else is on PATH. A mingw `gcc` (what
+-- `install.ps1` installs) is only used when `CC` names it, so name it -- unless the user
+-- set `CC` themselves or `cl` is reachable. `vim.env` is inherited by the CLI's process.
+local function windows_compiler()
+	if vim.fn.has("win32") == 0 or vim.env.CC or vim.fn.executable("cl") == 1 then
+		return
+	end
+
+	for _, compiler in ipairs({ "gcc", "clang", }) do
+		if vim.fn.executable(compiler) == 1 then
+			vim.env.CC = compiler
+			return
+		end
+	end
+end
+
+
 return {
 	"nvim-treesitter/nvim-treesitter",
 
@@ -102,6 +120,7 @@ return {
 	-- `setup()` is deliberately absent: upstream states it is not needed for default
 	-- values, and the only option it takes is `install_dir`, whose default is correct.
 	config = function()
+		windows_compiler()
 		require("nvim-treesitter").install(languages)
 
 		local group = vim.api.nvim_create_augroup("waldo_treesitter", { clear = true, })
