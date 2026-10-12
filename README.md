@@ -12,7 +12,6 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | Neovim **0.12+** | Config targets modern APIs (`vim.lsp.config`, `vim.hl`, built-in EditorConfig) | `nvim --version` |
 | Git **2.19+** | lazy.nvim uses partial clones (`--filter=blob:none`) | |
 | Node **22+** | The global npm packages below | |
-| lazygit **0.40+** | `lua/plugin/git.lua` wraps the lazygit TUI | 0.40.0 added the Worktrees panel |
 | tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential`; Windows: MinGW or Visual Studio Build Tools (with MinGW, `lua/plugin/treesitter.lua` sets `CC=gcc` — the CLI otherwise only tries `cl.exe`) |
 | .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`: the `EasyDotnet` global tool, the Roslyn server it manages, and the `dotnet` verbs themselves | `dotnet --version` |
@@ -594,7 +593,7 @@ new highlight groups keep their fallback colours until `:Catppuccin compile` is 
 ## Git hunks
 
 `lua/plugin/diff.lua` sets up **`mini.diff`** — gutter marks for changed lines, hunk
-motions, and staging. It is the in-buffer half of git; `lua/plugin/git.lua` (lazygit) stays
+motions, and staging. It is the in-buffer half of git; `lua/plugin/git.lua` (Neogit) stays
 the porcelain. No download: `mini.nvim` is already installed for the statusline.
 
 | Key | Does |

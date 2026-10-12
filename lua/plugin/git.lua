@@ -1,40 +1,43 @@
 -- Git porcelain: review changes, manage branches and worktrees.
 --
--- A wrapper around the external `lazygit` TUI rather than a native Neovim UI. That is
--- the deliberate tradeoff: lazygit shows five panels at once (status, files, branches,
--- commits, stash) with the focused one highlighted and its keybindings listed along the
--- bottom, so it is always visible what acts on what. Neogit was tried first and lost on
--- exactly that -- being a Magit clone, everything hides behind single-letter popups.
+-- A Magit clone, replacing the `lazygit` TUI wrapper this file used to hold. That
+-- wrapper's panels were plain terminal text -- no tree-sitter, no Neovim scrolling,
+-- folds or search -- because they were lazygit's own screen, not a Neovim buffer.
+-- Neogit's status, diff and log views are real Neovim buffers, so all of that works
+-- for free, and `treesitter_diff_highlight` (on by default) highlights diff hunks with
+-- the file's own syntax rather than plain +/- coloring.
 --
--- Worktrees need lazygit >= 0.40.0, which added the Worktrees panel. `install.sh`
--- enforces that floor.
+-- Everything funnels through one buffer: `<leader>gg` opens status, and every other
+-- action -- commit, log, branch, stash, push/pull, rebase, cherry-pick, worktree -- is
+-- a single-letter popup from there (`c`, `l`, `b`, `Z`, `P`/`p`, `r`, `A`, `w`; `?` lists
+-- them all). Nothing else needs its own top-level keymap.
 --
---   Inside lazygit:  <tab> / h l  cycle panels     ?  keybindings for the focused panel
---   Worktrees panel: n new   <space> switch   d remove
---   Branches panel:  n new   <space> checkout  d delete   w new worktree from branch
---
--- Costs of the wrapper, stated plainly: no native Neovim keymaps, autocommands or
--- statusline see the git state, and it needs the `lazygit` binary installed.
+-- Diffs are inline-only by design -- upstream calls this an explicit tradeoff and
+-- offers `diffview.nvim` or `codediff.nvim` as an optional fuller diff viewer. Neither
+-- is added here: the inline, tree-sitter-highlighted hunks already answer the
+-- complaint about lazygit, and a second diff plugin is not worth the extra dependency
+-- until inline is actually found lacking.
 return {
-	"kdheepak/lazygit.nvim",
+	"NeogitOrg/neogit",
 
-	cmd = {
-		"LazyGit",
-		"LazyGitConfig",
-		"LazyGitCurrentFile",
-		"LazyGitFilter",
-		"LazyGitFilterCurrentFile",
+	dependencies = {
+		"nvim-lua/plenary.nvim",
+		"MunifTanjim/nui.nvim",
 	},
 
-	-- Upstream lists `plenary.nvim` under `dependencies`, but its own README calls it
-	-- "optional for floating window border decoration". Omitted -- nothing else here
-	-- needs plenary, and a border is not worth a dependency.
+	cmd = "Neogit",
 
-	-- Upstream suggests <leader>lg. Using <leader>g* to sit under the "Git" group that
-	-- which-key already shows.
+	opts = {
+		-- Upstream disables both by default, to keep the status buffer's own line
+		-- prefixes (fold markers, section markers) uncluttered. `lua/config/vim.lua`
+		-- turns both on globally for every other buffer, so leaving these at their
+		-- default would make Neogit the one buffer in the editor without a gutter.
+		disable_line_numbers          = false,
+		disable_relative_line_numbers = false,
+	},
+
 	keys = {
-		{ "<leader>gg", "<Cmd>LazyGit<CR>",            desc = "Git: lazygit", },
-		{ "<leader>gf", "<Cmd>LazyGitCurrentFile<CR>", desc = "Git: lazygit (current file's repo)", },
-		{ "<leader>gl", "<Cmd>LazyGitFilter<CR>",      desc = "Git: commit log", },
+		{ "<leader>gg", "<Cmd>Neogit<CR>",           desc = "Git: status", },
+		{ "<leader>gf", "<Cmd>Neogit cwd=%:p:h<CR>", desc = "Git: status (current file's repo)", },
 	},
 }

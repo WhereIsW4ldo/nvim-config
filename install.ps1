@@ -38,8 +38,6 @@ $ChocoDeps = @(
 	@{ Cmd = "nvim";        Min = "0.12.0"; Package = "neovim";      Probe = { nvim --version | Select-Object -First 1 } }
 	@{ Cmd = "git";         Min = "2.19.0"; Package = "git";         Probe = { git --version } }
 	@{ Cmd = "node";        Min = "22.0.0"; Package = "nodejs-lts";  Probe = { node --version } }
-	# The line ends in `git version=X`, so anchor on the field rather than the first number.
-	@{ Cmd = "lazygit";     Min = "0.40.0"; Package = "lazygit";     Probe = { if ((lazygit --version) -match "(?:^|, )version=([\d.]+)") { $Matches[1] } } }
 	@{ Cmd = "tree-sitter"; Min = "0.26.1"; Package = "tree-sitter"; Probe = { tree-sitter --version } }
 	# Any compiler the `cc` crate can drive: MSVC's `cl`, or gcc/clang. mingw is the
 	# lightest to install; Visual Studio Build Tools satisfies this just as well. The CLI
