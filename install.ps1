@@ -49,6 +49,10 @@ $ChocoDeps = @(
 	@{ Cmd = "dotnet";      Min = "10.0.0"; Package = "dotnet-sdk";  Probe = { dotnet --version } }
 	@{ Cmd = "cargo";       Min = $null;    Package = "rustup.install" }
 	@{ Cmd = "terraform";   Min = $null;    Package = "terraform" }
+	# PowerShell 7+, to host `powershell_es` -- mason's package is only the editor-services
+	# DLLs, not a PowerShell runtime. Windows PowerShell 5.1 (powershell.exe) cannot run it;
+	# the Chocolatey package is `pwsh.exe` from "PowerShell Core".
+	@{ Cmd = "pwsh";        Min = $null;    Package = "powershell-core" }
 	@{ Cmd = "rg";          Min = "12.0.0"; Package = "ripgrep";     Probe = { rg --version | Select-Object -First 1 } }
 	# mason's toolchain. curl.exe and tar.exe (bsdtar) ship with Windows 10 1803+; 7-Zip
 	# covers the unzip/gzip half, which Windows has no standalone binary for.

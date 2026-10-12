@@ -52,12 +52,16 @@ its own sidecar and adds Roslynator, Razor and a test runner on top. See
 | Vue + TypeScript | `vue_ls` + `vtsls` | `ts_ls`. Since Vue language server v3 there is no takeover mode, and both upstreams point at `vtsls`; lspconfig warns against enabling `ts_ls` alongside it. |
 | Docker | `docker_language_server` | `dockerls` + `docker_compose_language_service`, which take two servers to cover the same ground. Docker's own binary also handles Bake. |
 | Rust | `rust_analyzer` | — |
+| PowerShell | `powershell_es` | — only server nvim-lspconfig ships for the language. Backed by Microsoft's own [PowerShellEditorServices](https://github.com/PowerShell/PowerShellEditorServices), the same engine behind VS Code's official PowerShell extension. |
 
-Two of them need a toolchain `install.sh` installs: **`cargo`**, because `rust_analyzer`
-shells out to `cargo metadata` and knows nothing about a project without it; and
+Three of them need a toolchain `install.sh` installs: **`cargo`**, because `rust_analyzer`
+shells out to `cargo metadata` and knows nothing about a project without it;
 **`terraform`**, because HCL formatting goes through the CLI rather than the server — see
-below. (**`dotnet`** is a third such toolchain, but it belongs to easy-dotnet rather than
-to mason now — see [.NET tooling](#net-tooling--required-by-luaplugindotnetlua).)
+below; and **`pwsh`**, because mason's `powershell-editor-services` package is only the
+PowerShellEditorServices DLLs — `pwsh` (PowerShell 7+) is what actually hosts and runs
+them, and Windows PowerShell 5.1 (`powershell.exe`) cannot. (**`dotnet`** is a fourth such
+toolchain, but it belongs to easy-dotnet rather than to mason now — see
+[.NET tooling](#net-tooling--required-by-luaplugindotnetlua).)
 
 One of them needs a setting, in `lua/plugin/terraform.lua`:
 

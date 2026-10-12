@@ -65,6 +65,7 @@ return {
 				"vue_ls",
 				"docker_language_server",
 				"rust_analyzer", -- needs `cargo` on PATH to load a workspace
+				"powershell_es", -- needs `pwsh` on PATH to actually run
 			},
 
 			-- `true` is the default, and stating it is the reason no server is configured

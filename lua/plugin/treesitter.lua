@@ -53,6 +53,8 @@ local languages = {
 
 	"rust",
 
+	"powershell",
+
 	-- Not requested on their own -- these are the file formats the languages above drag in.
 	-- `css`/`html` are the `<style>` and `<template>` halves of a Vue SFC, `yaml` is
 	-- Compose, `toml` is `Cargo.toml`, `json` is `tsconfig.json` and `package.json`.

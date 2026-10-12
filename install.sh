@@ -58,6 +58,13 @@ BREW_DEPS=(
 	# new enough to build the project is new enough here. `rustup` is the better install
 	# than brew's `rust` if you want per-project toolchains; either satisfies this.
 	"cargo|-|rust|"
+	# PowerShell 7+, for `powershell_es`. mason's `powershell-editor-services` package is
+	# only the PowerShellEditorServices bundle -- a set of .NET DLLs with no PowerShell
+	# runtime of its own. `pwsh` is what actually hosts and runs it; without it on PATH
+	# the server never starts. Presence-only: PowerShellEditorServices tracks whatever
+	# `pwsh` ships, not a specific floor. `powershell` is a core brew formula (works on
+	# Linuxbrew, not cask-only), unlike most of Microsoft's other tooling.
+	"pwsh|-|powershell|"
 	# Terraform, called directly by conform's `terraform_fmt` -- `lua/plugin/format.lua`
 	# formats HCL with `terraform fmt -no-color -` rather than through `terraformls`, which
 	# would only have shelled out to the same binary and cannot be relied on to answer
