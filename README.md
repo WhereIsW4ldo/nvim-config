@@ -62,6 +62,11 @@ them, and Windows PowerShell 5.1 (`powershell.exe`) cannot. (**`dotnet`** is a f
 toolchain, but it belongs to easy-dotnet rather than to mason now — see
 [.NET tooling](#net-tooling--required-by-luaplugindotnetlua).)
 
+PowerShell formatting keeps opening braces on the same line as `function`, `foreach`,
+`if`, and other block statements. `lua/plugin/powershell.lua` sets
+`powershell.codeFormatting.openBraceOnSameLine = true`; this applies to format-on-save
+and manual formatting with `<leader>F` through the existing LSP fallback.
+
 One of them needs a setting, in `lua/plugin/terraform.lua`:
 
 - **`terraformls` indexes `.terraform/modules` and starves itself doing it.** After a

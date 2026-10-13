@@ -44,6 +44,13 @@ return {
 				vim.fn.stdpath("data"),
 				"mason", "packages", "powershell-editor-services"
 			),
+			settings = {
+				powershell = {
+					codeFormatting = {
+						openBraceOnSameLine = true,
+					},
+				},
+			},
 		})
 	end,
 }
