@@ -596,6 +596,12 @@ new highlight groups keep their fallback colours until `:Catppuccin compile` is 
 motions, and staging. It is the in-buffer half of git; `lua/plugin/git.lua` (Neogit) stays
 the porcelain. No download: `mini.nvim` is already installed for the statusline.
 
+Neogit's read-only views close automatically when `:bdelete` or `<leader>bc` closes
+the last file buffer (the empty replacement buffer stays open). Quitting the last
+file window with `:q` exits Neovim even if Neogit and the explorer remain.
+Other file windows, terminals, and unsaved changes are preserved; commit and rebase
+editors are not treated as read-only Git views.
+
 | Key | Does |
 |---|---|
 | `]h` / `[h` | Next / previous hunk. Also mapped in operator-pending mode, so `d]h` works |
