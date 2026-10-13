@@ -7,12 +7,13 @@
 -- not add itself there: it installs into `~/.local/share/nvim/mason/packages/powershell-editor-services`,
 -- a plain mason package directory, not a PSModulePath entry.
 --
--- `bundle_path` has to be the directory that directly contains `Start-EditorServices.ps1` --
--- NOT the mason package root one level above it. The installed `nvim-lspconfig` builds the
--- launch command as `bundle_path .. '/Start-EditorServices.ps1'` plus `-BundledModulesPath
--- bundle_path`, verified by reading `lsp/powershell_es.lua` out of the actual plugin
--- checkout rather than off GitHub's `main` branch -- the two disagree here (`main` joins an
--- extra `PowerShellEditorServices` segment that the installed version does not).
+-- `bundle_path` has to be the mason package ROOT, not the `PowerShellEditorServices`
+-- directory one level below it. The installed `nvim-lspconfig` builds the launch command
+-- as `bundle_path .. '/PowerShellEditorServices/Start-EditorServices.ps1'` -- verified by
+-- reading `lsp/powershell_es.lua` out of the actual plugin checkout. An earlier version of
+-- this comment claimed the opposite (no extra segment); that no longer matches the
+-- installed `nvim-lspconfig`, which does join the extra `PowerShellEditorServices` segment
+-- itself, so passing the deeper path here doubled it up and broke the launch command.
 --
 -- mason-lspconfig ships its OWN default for this one server --
 -- `mason-lspconfig/lsp/powershell_es.lua` sets `bundle_path` to the package root (the wrong,
@@ -41,7 +42,7 @@ return {
 		vim.lsp.config("powershell_es", {
 			bundle_path = vim.fs.joinpath(
 				vim.fn.stdpath("data"),
-				"mason", "packages", "powershell-editor-services", "PowerShellEditorServices"
+				"mason", "packages", "powershell-editor-services"
 			),
 		})
 	end,
