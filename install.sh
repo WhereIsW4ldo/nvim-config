@@ -33,8 +33,9 @@ BREW_DEPS=(
 	"node|22.0.0|node|node --version | sed 's/^v//'"
 	# nvim-treesitter compiles parsers locally with the tree-sitter CLI. Upstream is
 	# explicit that it must come from a package manager and NOT npm.
+	# Homebrew's `tree-sitter` formula is library-only; the binary is in `tree-sitter-cli`.
 	# `--version` prints `tree-sitter 0.26.3`, hence field 2.
-	"tree-sitter|0.26.1|tree-sitter|tree-sitter --version | awk '{print \$2}'"
+	"tree-sitter|0.26.1|tree-sitter-cli|tree-sitter --version | awk '{print \$2}'"
 	# A C compiler for those parsers. Presence-only: on Linux `cc` comes from the distro's
 	# build tools (Debian/Ubuntu: build-essential), and `brew install gcc` provides
 	# `gcc-13` rather than `cc`, so the brew path here is nominal. Listed anyway so

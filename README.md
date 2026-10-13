@@ -12,7 +12,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | Neovim **0.12+** | Config targets modern APIs (`vim.lsp.config`, `vim.hl`, built-in EditorConfig) | `nvim --version` |
 | Git **2.19+** | lazy.nvim uses partial clones (`--filter=blob:none`) | |
 | Node **22+** | The global npm packages below | |
-| tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | From a package manager, **not npm** — upstream is explicit |
+| tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | Homebrew: `brew install tree-sitter-cli` (`tree-sitter` is library-only). From a package manager, **not npm** — upstream is explicit |
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential`; Windows: MinGW or Visual Studio Build Tools (with MinGW, `lua/plugin/treesitter.lua` sets `CC=gcc` — the CLI otherwise only tries `cl.exe`) |
 | .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`: the `EasyDotnet` global tool, the Roslyn server it manages, and the `dotnet` verbs themselves | `dotnet --version` |
 | A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
