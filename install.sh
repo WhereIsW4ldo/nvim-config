@@ -119,6 +119,8 @@ BREW_DEPS=(
 # (see https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack), so bump
 # these consciously rather than floating on latest.
 NPM_DEPS=(
+	# Official Copilot CLI agent, opened by Sidekick in lua/plugin/ai.lua.
+	"copilot|@github/copilot@1.0.98"
 	# prettier, as a daemon, for conform.nvim -- see `lua/plugin/format.lua`. It bundles
 	# its own prettier (a dependency of the package), so this one entry covers markdown,
 	# Vue, TypeScript and the JSON/YAML/CSS files around them. `prettierd` is the binary

@@ -74,6 +74,7 @@ $PipDeps = @(
 
 # Pinned for the same supply-chain reason as in install.sh.
 $NpmDeps = @(
+	@{ Cmd = "copilot";                     Spec = "@github/copilot@1.0.98" }
 	@{ Cmd = "prettierd";                   Spec = "@fsouza/prettierd@0.29.0" }
 	@{ Cmd = "eslint_d";                    Spec = "eslint_d@15.0.3" }
 	@{ Cmd = "markdownlint-cli2";           Spec = "markdownlint-cli2@0.23.2" }
