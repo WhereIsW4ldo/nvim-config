@@ -75,6 +75,14 @@ PowerShell formatting keeps opening braces on the same line as `function`, `fore
 `powershell.codeFormatting.openBraceOnSameLine = true`; this applies to format-on-save
 and manual formatting with `<leader>F` through the existing LSP fallback.
 
+PowerShell syntax highlighting uses Tree-sitter, with the server's semantic coloring
+disabled only for PowerShell to avoid [stale colors after edits](https://github.com/PowerShell/PowerShellEditorServices/issues/2216).
+Completion, diagnostics, navigation and formatting still use the server. If an installed
+parser is missing its highlight queries, the config warns and keeps Vim's syntax
+highlighting instead of starting an empty highlighter. Run `:TSInstall! powershell` to
+repair that installation, then reopen the buffer. `:TSUpdate` alone can skip the repair
+if the parser revision already matches.
+
 One of them needs a setting, in `lua/plugin/terraform.lua`:
 
 - **`terraformls` indexes `.terraform/modules` and starves itself doing it.** After a

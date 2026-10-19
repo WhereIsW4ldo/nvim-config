@@ -133,7 +133,20 @@ return {
 			group = group,
 			pattern = filetypes(),
 			desc = "Start tree-sitter highlighting and structural folding",
-			callback = function()
+			callback = function(args)
+				local language = vim.treesitter.language.get_lang(vim.bo[args.buf].filetype)
+
+				-- A parser alone is considered "installed", even if its queries are missing.
+				-- Starting it then disables Vim syntax without providing any replacement.
+				if #vim.treesitter.query.get_files(language, "highlights") == 0 then
+					vim.notify(
+						("Missing Tree-sitter highlights for %s; keeping Vim syntax. Run :TSInstall! %s.")
+							:format(language, language),
+						vim.log.levels.WARN
+					)
+					return
+				end
+
 				-- `install()` is asynchronous, so on a cold machine a buffer can open
 				-- before its parser has finished compiling. Unwrapped, `start()` throws
 				-- that at the user on their very first launch.

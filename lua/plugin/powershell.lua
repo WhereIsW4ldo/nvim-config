@@ -44,6 +44,11 @@ return {
 				vim.fn.stdpath("data"),
 				"mason", "packages", "powershell-editor-services"
 			),
+			on_attach = function(client, bufnr)
+				-- PSES can leave stale colors after edits (PowerShell/PowerShellEditorServices#2216).
+				-- Keep Tree-sitter as the single coloring source; other LSP features stay enabled.
+				vim.lsp.semantic_tokens.enable(false, { bufnr = bufnr, client_id = client.id, })
+			end,
 			settings = {
 				powershell = {
 					codeFormatting = {
