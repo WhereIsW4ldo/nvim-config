@@ -24,6 +24,8 @@ local languages = {
 	"hcl",
 	"terraform",
 
+	"bicep",
+
 	"c_sharp",
 
 	-- Not a language anyone edits by choice -- it is here for .NET's project files.

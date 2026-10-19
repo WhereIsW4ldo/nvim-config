@@ -14,7 +14,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | Node **22+** | The global npm packages below | |
 | tree-sitter CLI **0.26.1+** | `nvim-treesitter` compiles parsers locally | Homebrew: `brew install tree-sitter-cli` (`tree-sitter` is library-only). From a package manager, **not npm** — upstream is explicit |
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential`; Windows: MinGW or Visual Studio Build Tools (with MinGW, `lua/plugin/treesitter.lua` sets `CC=gcc` — the CLI otherwise only tries `cl.exe`) |
-| .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`: the `EasyDotnet` global tool, the Roslyn server it manages, and the `dotnet` verbs themselves | `dotnet --version` |
+| .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`, plus hosting the Bicep language server installed by mason | `dotnet --version` |
 | A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
 | `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Linux uses these Unix tools; Windows uses PowerShell, Git, GNU tar, and 7-Zip-compatible extraction (covered by `install.ps1`) |
 
@@ -47,20 +47,28 @@ its own sidecar and adds Roslynator, Razor and a test runner on top. See
 | Language | Server | Chosen over |
 |---|---|---|
 | Terraform | `terraformls` | HashiCorp's own. `terraform_lsp` is the community alternative and is unmaintained. |
+| Bicep | `bicep` | Microsoft's official [Bicep language server](https://github.com/Azure/bicep), installed as mason's `bicep-lsp`. Reuses the existing LSP and Tree-sitter plugins; no Bicep-specific plugin is needed. |
 | Markdown | `marksman` | — |
 | Vue + TypeScript | `vue_ls` + `vtsls` | `ts_ls`. Since Vue language server v3 there is no takeover mode, and both upstreams point at `vtsls`; lspconfig warns against enabling `ts_ls` alongside it. |
 | Docker | `docker_language_server` | `dockerls` + `docker_compose_language_service`, which take two servers to cover the same ground. Docker's own binary also handles Bake. |
 | Rust | `rust_analyzer` | — |
 | PowerShell | `powershell_es` | — only server nvim-lspconfig ships for the language. Backed by Microsoft's own [PowerShellEditorServices](https://github.com/PowerShell/PowerShellEditorServices), the same engine behind VS Code's official PowerShell extension. |
 
-Three of them need a toolchain `install.sh` installs: **`cargo`**, because `rust_analyzer`
+Four of them need a toolchain `install.sh` installs: **`cargo`**, because `rust_analyzer`
 shells out to `cargo metadata` and knows nothing about a project without it;
 **`terraform`**, because HCL formatting goes through the CLI rather than the server — see
-below; and **`pwsh`**, because mason's `powershell-editor-services` package is only the
+below; **`pwsh`**, because mason's `powershell-editor-services` package is only the
 PowerShellEditorServices DLLs — `pwsh` (PowerShell 7+) is what actually hosts and runs
-them, and Windows PowerShell 5.1 (`powershell.exe`) cannot. (**`dotnet`** is a fourth such
-toolchain, but it belongs to easy-dotnet rather than to mason now — see
-[.NET tooling](#net-tooling--required-by-luaplugindotnetlua).)
+them, and Windows PowerShell 5.1 (`powershell.exe`) cannot; and **`dotnet`**, which hosts
+Bicep's `Bicep.LangServer.dll` as well as the easy-dotnet tooling described below.
+
+Bicep uses Neovim's built-in filetype detection: `.bicep` is `bicep`, and `.bicepparam`
+is `bicep-params`. The server attaches to both, using the existing completion, hover,
+diagnostics and navigation setup. Tree-sitter adds syntax highlighting and structural
+folding for `.bicep` files. The standard parser does not support parameter assignments,
+so `.bicepparam` files rely on the server's semantic highlighting instead; they do not
+get Tree-sitter highlighting or folding. No Azure CLI or Azure login is required for
+local language support; private module registries can require authentication.
 
 PowerShell formatting keeps opening braces on the same line as `function`, `foreach`,
 `if`, and other block statements. `lua/plugin/powershell.lua` sets

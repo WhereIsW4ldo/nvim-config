@@ -159,15 +159,15 @@ return {
 		-- which rewrites a `.csproj` well beyond re-indenting it. So an `xml` buffer that
 		-- never formats on save is that decision, not a gap in this list.
 		format_on_save = function(bufnr)
-			if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
-				return
-			end
-
-			-- Above conform's 1000 default, because the first save of a session is where
-			-- `prettierd` starts its daemon; subsequent saves are milliseconds. This
-			-- blocks the write, so treat it as a ceiling for the pathological case and
-			-- not as a budget.
-			return { timeout_ms = 2000, }
+			-- if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
+			-- 	return
+			-- end
+			--
+			-- -- Above conform's 1000 default, because the first save of a session is where
+			-- -- `prettierd` starts its daemon; subsequent saves are milliseconds. This
+			-- -- blocks the write, so treat it as a ceiling for the pathological case and
+			-- -- not as a budget.
+			-- return { timeout_ms = 2000, }
 		end,
 	},
 

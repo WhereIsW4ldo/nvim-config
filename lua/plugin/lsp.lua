@@ -60,6 +60,7 @@ return {
 			ensure_installed = {
 				"lua_ls",
 				"terraformls",
+				"bicep", -- needs `dotnet` on PATH to host Microsoft's language server
 				"marksman",
 				"vtsls", -- also serves the TypeScript half of a Vue SFC
 				"vue_ls",

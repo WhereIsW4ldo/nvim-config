@@ -46,8 +46,8 @@ BREW_DEPS=(
 	# below gets onto this machine, that sidecar in turn downloads and runs
 	# `roslyn-language-server`, and Microsoft.CodeAnalysis.LanguageServer 5.8 is a
 	# `net10.0` assembly needing the matching runtime. `dotnet --version` reports the SDK,
-	# which implies the runtime. NOT a mason dependency any more -- C# left mason when
-	# easy-dotnet took over the server.
+	# which implies the runtime. C# left mason when easy-dotnet took over the server;
+	# dotnet also hosts mason's Bicep language server (Bicep.LangServer.dll).
 	"dotnet|10.0.0|dotnet|dotnet --version"
 	# A Rust toolchain, for `rust_analyzer`. mason ships the server as a prebuilt binary,
 	# but the server itself shells out to `cargo metadata` to load a workspace -- without
