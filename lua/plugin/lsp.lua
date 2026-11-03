@@ -106,6 +106,24 @@ return {
 		init = function()
 			local group = vim.api.nvim_create_augroup("waldo_lsp_attach", { clear = true, })
 
+			vim.lsp.config("*", {
+				handlers = {
+					-- Late capability registration otherwise installs core's unbounded K mapping.
+					["client/registerCapability"] = function(err, result, ctx, config)
+						local response = vim.lsp.handlers["client/registerCapability"](err, result, ctx, config)
+						local client = vim.lsp.get_client_by_id(ctx.client_id)
+
+						if client then
+							for bufnr in pairs(client.attached_buffers) do
+								require("util.float").attach(client, bufnr)
+							end
+						end
+
+						return response
+					end,
+				},
+			})
+
 			vim.api.nvim_create_autocmd("LspAttach", {
 				group = group,
 				desc = "LSP navigation keymaps, backed by the snacks picker",
@@ -136,6 +154,10 @@ return {
 					-- `lua/config/diagnostic.lua`. Splitting this file means moving the
 					-- whole LspAttach block, not adding to it.
 					local client = vim.lsp.get_client_by_id(args.data.client_id)
+
+					if client then
+						require("util.float").attach(client, args.buf)
+					end
 
 					-- Guarded and buffer-scoped: an unguarded global `enable(true)` also
 					-- turns hints on in buffers whose server has no `textDocument/inlayHint`,

@@ -11,10 +11,19 @@
 return {
 	"MeanderingProgrammer/render-markdown.nvim",
 
-	-- Plain markdown files, and nothing else.
+	-- Native hover and signature floats also set this filetype.
 	ft = "markdown",
 
 	---@module "render-markdown"
 	---@type render.md.UserConfig
-	opts = {},
+	opts = {
+		overrides = {
+			buftype = {
+				nofile = {
+					-- Documentation stays rendered when its cursor line gains focus.
+					anti_conceal = { enabled = false, },
+				},
+			},
+		},
+	},
 }

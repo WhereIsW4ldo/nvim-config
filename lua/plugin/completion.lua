@@ -84,13 +84,8 @@ return {
 			},
 		},
 
-		-- Argument hints in a float while typing a call. Upstream marks this experimental
-		-- and ships it off; it is on here because the alternative is core's `<C-s>`, which
-		-- is a deliberate keypress rather than something that follows the cursor.
-		--
-		-- It claims `<C-k>` in insert mode, which is otherwise digraph entry. Set this to
-		-- false to get that back.
-		signature = { enabled = true, },
+		-- Native `<C-s>` owns signature help; avoid a competing automatic popup.
+		signature = { enabled = false, },
 
 		-- Already the default. Spelled out because it is the whole answer to "where do
 		-- completions come from", and because `opts_extend` below only means something if

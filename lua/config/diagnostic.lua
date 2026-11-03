@@ -23,12 +23,19 @@ vim.diagnostic.config({
 
 	-- The gutter symbol. This is what marks a line the cursor is not on, so it is
 	-- load-bearing here rather than incidental, even though `true` is already the default.
-	signs = true,
+	signs         = true,
 
 	-- Draws the squiggle. Also already the default -- but a flat one until the colorscheme
 	-- asks for `undercurl`, which is what `plugin/colorscheme.lua` now does.
-	underline = true,
+	underline     = true,
 
 	-- So an error outranks a warning for the single sign the gutter can show.
 	severity_sort = true,
+
+	-- Resolve dimensions on each open, including after resizing the editor.
+	float         = function()
+		return vim.tbl_extend("force", require("util.float").options(), {
+			source = "if_many",
+		})
+	end,
 })

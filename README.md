@@ -22,6 +22,28 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | Maven and Gradle | Build and test Java projects without checked-in wrappers | `brew install maven gradle`; prefer `./mvnw` and `./gradlew` where available |
 | `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Linux uses these Unix tools; Windows uses PowerShell, Git, GNU tar, and 7-Zip-compatible extraction (covered by `install.ps1`) |
 
+## Documentation popups
+
+Hover uses native LSP windows with the existing `render-markdown.nvim` renderer.
+Link destinations such as `jdt://` URIs are dropped from hover text, keeping only
+the link label, because concealed text still takes up space when lines wrap.
+Hover, line diagnostics, and manual signature help wrap long text and use rounded
+borders, capped at roughly 70% of editor width and 50% of available height.
+Dimensions are calculated when opened, so reopening after a resize uses the new size.
+
+| Key | Action |
+|---|---|
+| `K`, then `K` again | Open hover documentation, then focus it |
+| `<leader>dl`, then repeat | Open line diagnostics, then focus the popup |
+| `<C-f>` / `<C-b>` (normal mode) | Scroll an open native popup; otherwise page the code normally |
+| `q` (inside a popup) | Close the popup |
+| `<C-s>` (insert mode) | Show signature help, including the active parameter |
+
+Blink's automatic signature popup is disabled; completion and its documentation
+are unchanged. Inline diagnostics and the existing buffer/workspace diagnostic
+pickers remain enabled. Diagnostic messages are plain text, not Markdown.
+No additional plugin or external tool is needed.
+
 ## External dependencies
 
 Plugins that need something installed outside Neovim. lazy.nvim will **not** install
