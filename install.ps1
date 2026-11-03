@@ -38,6 +38,10 @@ $ChocoDeps = @(
 	@{ Cmd = "nvim";        Min = "0.12.0"; Package = "neovim";      Probe = { nvim --version | Select-Object -First 1 } }
 	@{ Cmd = "git";         Min = "2.19.0"; Package = "git";         Probe = { git --version } }
 	@{ Cmd = "node";        Min = "22.0.0"; Package = "nodejs-lts";  Probe = { node --version } }
+	@{ Cmd = "java";        Min = "25.0.0"; Package = "temurin25";  Probe = { java -version } }
+	@{ Cmd = "javac";       Min = "25.0.0"; Package = "temurin25";  Probe = { javac -version } }
+	@{ Cmd = "mvn";         Min = $null;    Package = "maven" }
+	@{ Cmd = "gradle";      Min = $null;    Package = "gradle" }
 	@{ Cmd = "tree-sitter"; Min = "0.26.1"; Package = "tree-sitter"; Probe = { tree-sitter --version } }
 	# Any compiler the `cc` crate can drive: MSVC's `cl`, or gcc/clang. mingw is the
 	# lightest to install; Visual Studio Build Tools satisfies this just as well. The CLI
@@ -62,7 +66,7 @@ $ChocoDeps = @(
 	@{ Cmd = "tflint";      Min = $null;    Package = "tflint" }
 	@{ Cmd = "hadolint";    Min = $null;    Package = "hadolint" }
 	@{ Cmd = "shellcheck";  Min = $null;    Package = "shellcheck" }
-	# Only for sqlfluff below. The Microsoft Store stub `python.exe` is on PATH by default
+	# For sqlfluff and the jdtls launcher. The Microsoft Store stub `python.exe` is on PATH by default
 	# and prints no version, so a version floor is what tells it apart from a real Python.
 	@{ Cmd = "python";      Min = "3.9.0";  Package = "python";      Probe = { python --version } }
 )

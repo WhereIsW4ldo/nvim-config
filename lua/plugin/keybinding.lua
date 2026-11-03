@@ -22,6 +22,7 @@ return {
 			{ "<leader>D", group = "Database", },
 			{ "<leader>f", group = "Find", },
 			{ "<leader>g", group = "Git", },
+			{ "<leader>j", group = "Java", },
 			{ "<leader>x", group = "Debug", },
 		},
 	},

@@ -67,11 +67,11 @@ return {
 				"docker_language_server",
 				"rust_analyzer", -- needs `cargo` on PATH to load a workspace
 				"powershell_es", -- needs `pwsh` on PATH to actually run
+				"jdtls", -- Java startup and extension bundles belong to java.lua
 			},
 
-			-- `true` is the default, and stating it is the reason no server is configured
-			-- by hand anywhere in this config: mason-lspconfig calls `vim.lsp.enable()`
-			-- itself. Note *every installed server*, not every server named above --
+			-- `true` is the default: mason-lspconfig calls `vim.lsp.enable()` itself,
+			-- except for the exclusions below. Note *every installed server*, not every server named above --
 			-- dropping a name from `ensure_installed` stops mason installing it and does
 			-- nothing about a copy already on disk.
 			--
@@ -82,8 +82,10 @@ return {
 			-- exclusion is what makes the removal hold on a machine that has the package
 			-- installed; `:MasonUninstall roslyn-language-server` is the other half, and
 			-- reclaims the disk.
+			-- Java is installed here but enabled by java.lua only after its debugger and
+			-- test bundles are installed; enabling early starts a client without them.
 			automatic_enable = {
-				exclude = { "roslyn_ls", },
+				exclude = { "roslyn_ls", "jdtls", },
 			},
 		},
 	},

@@ -19,9 +19,8 @@
 -- `:checkhealth easy-dotnet` reports the debugger it found under `debugger.path`.
 --
 -- The registration is `pcall`-guarded on `require("dap")`, which is why easy-dotnet worked
--- without this file at all and simply had no debugger. C# is currently the only language
--- here with an adapter; another one means another `lua/plugin/<language>.lua`, not an
--- addition to this file.
+-- without this file at all and simply had no debugger. Java's adapter is registered by
+-- `lua/plugin/java.lua`; adapters belong in their language's module, not this file.
 --
 -- ── Why nvim-dap-view over nvim-dap-ui ───────────────────────────────────────────────
 --

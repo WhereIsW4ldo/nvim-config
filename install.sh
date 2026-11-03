@@ -31,6 +31,14 @@ BREW_DEPS=(
 	"nvim|0.12.0|neovim|nvim --version | head -1 | sed 's/^NVIM v//'"
 	"git|2.19.0|git|git --version | awk '{print \$3}'"
 	"node|22.0.0|node|node --version | sed 's/^v//'"
+	# Current JDT LS runs on Java 25+, independently of the project's target Java version.
+	# Check javac too: a JRE alone cannot compile applications.
+	"java|25|openjdk|java -version 2>&1 | head -1 | cut -d '\"' -f 2"
+	"javac|25|openjdk|javac -version 2>&1 | awk '{print \$2}'"
+	"python3|3.9|python|python3 --version | awk '{print \$2}'"
+	# Prefer project wrappers (./mvnw and ./gradlew); these cover projects without one.
+	"mvn|-|maven|"
+	"gradle|-|gradle|"
 	# nvim-treesitter compiles parsers locally with the tree-sitter CLI. Upstream is
 	# explicit that it must come from a package manager and NOT npm.
 	# Homebrew's `tree-sitter` formula is library-only; the binary is in `tree-sitter-cli`.
@@ -327,6 +335,27 @@ for entry in "${BREW_DEPS[@]}"; do
 		|| die "$cmd is $current after install, still below $min"
 	ok "$cmd $current installed"
 done
+
+# ── Java project runtime ─────────────────────────────────────────────────────────
+# JDT LS needs Java 25+, but existing Gradle wrappers commonly need Java 21.
+heading "Java project runtime"
+JAVA_21_HOME="${JAVA_HOME_21:-$(brew --prefix)/opt/openjdk@21/libexec}"
+if [ "$OS" = "macos" ] && [ -d "$JAVA_21_HOME/openjdk.jdk/Contents/Home" ]; then
+	JAVA_21_HOME="$JAVA_21_HOME/openjdk.jdk/Contents/Home"
+fi
+if [ -x "$JAVA_21_HOME/bin/javac" ]; then
+	ok "Java 21 project JDK present ($JAVA_21_HOME)"
+elif $CHECK_ONLY; then
+	bad "Java 21 project JDK missing -- brew install openjdk@21 (or set JAVA_HOME_21)"
+	MISSING=$((MISSING + 1))
+else
+	brew install openjdk@21
+	if [ "$OS" = "macos" ] && [ -d "$JAVA_21_HOME/openjdk.jdk/Contents/Home" ]; then
+		JAVA_21_HOME="$JAVA_21_HOME/openjdk.jdk/Contents/Home"
+	fi
+	[ -x "$JAVA_21_HOME/bin/javac" ] || die "Java 21 not found at $JAVA_21_HOME; set JAVA_HOME_21"
+	ok "Java 21 project JDK installed"
+fi
 
 # ── Global npm packages ──────────────────────────────────────────────────────────
 heading "Node packages"

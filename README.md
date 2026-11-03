@@ -16,6 +16,10 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | A C compiler (`cc`) | Compiling those parsers | Debian/Ubuntu: `apt install build-essential`; Windows: MinGW or Visual Studio Build Tools (with MinGW, `lua/plugin/treesitter.lua` sets `CC=gcc` — the CLI otherwise only tries `cl.exe`) |
 | .NET SDK **10+** | Everything in `lua/plugin/dotnet.lua`, plus hosting the Bicep language server installed by mason | `dotnet --version` |
 | A Rust toolchain (`cargo`) | `rust_analyzer` loads a workspace with `cargo metadata` | `rustup` or `brew install rust` |
+| JDK **25+** (`java` and `javac`) | Runs current Eclipse JDT LS and compiles Java applications | `brew install openjdk`; project target JDKs may be older |
+| JDK **21** | Runs older Gradle wrappers and Java 21 project toolchains separately from JDT LS | `brew install openjdk@21`, or set `JAVA_HOME_21` to an existing JDK |
+| Python **3.9+** | Mason's `jdtls` launcher | `brew install python` |
+| Maven and Gradle | Build and test Java projects without checked-in wrappers | `brew install maven gradle`; prefer `./mvnw` and `./gradlew` where available |
 | `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Linux uses these Unix tools; Windows uses PowerShell, Git, GNU tar, and 7-Zip-compatible extraction (covered by `install.ps1`) |
 
 ## External dependencies
@@ -53,14 +57,17 @@ its own sidecar and adds Roslynator, Razor and a test runner on top. See
 | Docker | `docker_language_server` | `dockerls` + `docker_compose_language_service`, which take two servers to cover the same ground. Docker's own binary also handles Bake. |
 | Rust | `rust_analyzer` | — |
 | PowerShell | `powershell_es` | — only server nvim-lspconfig ships for the language. Backed by Microsoft's own [PowerShellEditorServices](https://github.com/PowerShell/PowerShellEditorServices), the same engine behind VS Code's official PowerShell extension. |
+| Java | `jdtls` + `nvim-jdtls` | Reuses Mason and nvim-dap. `nvim-java` adds its own tooling management; Lathe is a newer, Maven-focused alternative. |
 
-Four of them need a toolchain `install.sh` installs: **`cargo`**, because `rust_analyzer`
+Five of them need a toolchain `install.sh` installs: **`cargo`**, because `rust_analyzer`
 shells out to `cargo metadata` and knows nothing about a project without it;
 **`terraform`**, because HCL formatting goes through the CLI rather than the server — see
 below; **`pwsh`**, because mason's `powershell-editor-services` package is only the
 PowerShellEditorServices DLLs — `pwsh` (PowerShell 7+) is what actually hosts and runs
 them, and Windows PowerShell 5.1 (`powershell.exe`) cannot; and **`dotnet`**, which hosts
 Bicep's `Bicep.LangServer.dll` as well as the easy-dotnet tooling described below.
+Java additionally needs a **JDK** to launch JDT LS and compile projects, plus Maven
+or Gradle for builds; see [Java tooling](#java-tooling--required-by-luapluginjavalua).
 
 Bicep uses Neovim's built-in filetype detection: `.bicep` is `bicep`, and `.bicepparam`
 is `bicep-params`. The server attaches to both, using the existing completion, hover,
@@ -118,6 +125,75 @@ One more gap worth knowing about:
   attaches on `yaml.docker-compose`, so `lua/plugin/docker.lua` registers the patterns.
   A Compose file under a name neither `compose*.yaml` nor `docker-compose*.yaml` matches
   will open as plain `yaml` and get no server.
+
+### Java tooling — required by `lua/plugin/java.lua`
+
+Open a `.java` file to load [nvim-jdtls](https://github.com/mfussenegger/nvim-jdtls).
+Mason installs Eclipse JDT LS, `java-debug-adapter` and `java-test`; on first use,
+wait for these installations and project import to finish. Java is excluded from
+Mason's automatic LSP enablement so the server starts only once, with its debugger
+and test extensions loaded. Eclipse indexes live under Neovim's data directory,
+keyed by the full project path so same-named checkouts cannot collide.
+
+External dependencies are recorded in `install.sh`: a **JDK 25+** (`java` and `javac`,
+not just a JRE), **Python 3.9+** for the JDT LS launcher, **Maven** and **Gradle**.
+On Linux, `brew install openjdk maven gradle` installs the Java toolchain.
+On macOS, Homebrew's JDK is keg-only: add `$(brew --prefix openjdk)/bin` to `PATH`
+before running the installer or starting Neovim. macOS remains untested.
+The Windows installer records the equivalent Temurin 25, Maven and Gradle packages,
+and reuses its existing Python dependency; this Java setup has not been tested on Windows.
+Run `./install.sh --check` to check external tools, and `:Mason` to check Java packages.
+
+On managed networks, a newly installed JDK may not trust the organization's CA even
+when `curl` does. Import only already-approved CA certificates into that JDK's
+`cacerts` with `keytool`; do not disable certificate verification. Check again after
+a JDK upgrade, which can replace the trust store.
+
+Maven (`pom.xml`) and Gradle (`build.gradle[.kts]`, `settings.gradle[.kts]`) projects
+are imported automatically, including dependencies and multi-module builds. Open
+Neovim at the project root and prefer its checked-in `./mvnw` or `./gradlew` wrapper
+when building in `:terminal`; global `mvn` and `gradle` cover projects without one.
+For unwrapped Gradle projects, the importer uses `GRADLE_HOME` or detects the installed
+Gradle distribution from its launcher. This avoids Eclipse's bundled fallback Gradle
+being too old for the installed JDK. Project wrappers still take priority. If a wrapper
+requires an older JVM, configure `settings.java.import.gradle.java.home` separately.
+Java 21 is detected from `JAVA_HOME_21` or Homebrew's `openjdk@21`, registered as a
+project runtime, and used for the Gradle daemon. JDT LS itself still runs on the newer
+JDK. This is necessary for wrappers such as Gradle 8.10, which cannot run on Java 27.
+For example, `:terminal ./mvnw verify` or `:terminal ./gradlew build` builds and runs
+the whole test suite. New projects can be generated with Maven's archetypes or
+`gradle init`; Spring applications can be generated with [Spring Initializr](https://start.spring.io).
+No Spring-specific IDE plugin is included.
+
+Completion/snippets, diagnostics, hover (`K`), navigation (`gd`, `grr`), rename
+(`grn`), code actions/refactorings (`gra`) and manual formatting (`<leader>F`)
+reuse the existing editor setup. Lombok support uses the agent bundled by Mason.
+Format-on-save remains unchanged. Loose files outside a build project have limited
+project intelligence; use a Maven or Gradle project for dependency-aware development.
+
+| Mapping | Action |
+|---|---|
+| `<leader>jr` | Pick and run a main class without breakpoints |
+| `<F5>` | Discover main classes and start/continue debugging |
+| `<leader>xb` | Toggle breakpoint (existing debugger mappings and UI apply) |
+| `<leader>jt` / `<leader>jT` | Run / debug the current test class |
+| `<leader>jn` / `<leader>jN` | Run / debug the nearest test method |
+| `<leader>jo` | Organize imports |
+| `<leader>jb` | Compile the Eclipse workspace (not a Maven/Gradle lifecycle build) |
+| `<leader>ju` | Reload build configuration after changing dependencies |
+
+JUnit and TestNG must be dependencies of the project; the editor does not add them.
+Test results use nvim-jdtls's results/quickfix UI. Debugging enables hot code replacement
+where the JVM permits it. Project-specific launch arguments can go in
+`.vscode/launch.json` using nvim-dap's Java launch configurations.
+
+To target an older Java version, install that JDK separately and set
+`settings.java.configuration.runtimes` in `lua/plugin/java.lua`, for example
+`{ name = "JavaSE-17", path = "/absolute/path/to/jdk-17", }`; keep Java 25+ available
+to launch JDT LS itself. The build file still determines the project's target version.
+Use `:JdtShowLogs` for import/startup failures, `:JdtUpdateDebugConfig` to refresh
+main-class discovery, and `:JdtWipeDataAndRestart` to rebuild a damaged Eclipse index.
+Interactive completion menus, keybindings and debugger UI still need an interactive check.
 
 ### .NET tooling — required by `lua/plugin/dotnet.lua`
 

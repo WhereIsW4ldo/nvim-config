@@ -27,6 +27,7 @@ local languages = {
 	"bicep",
 
 	"c_sharp",
+	"java",
 
 	-- Not a language anyone edits by choice -- it is here for .NET's project files.
 	-- `.csproj`, `.fsproj`, `.slnx` and `Directory.Packages.props` are all `xml` to
