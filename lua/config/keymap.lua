@@ -18,6 +18,12 @@ map("n", "<leader>dl", function()
 	vim.diagnostic.open_float({ scope = "line", })
 end, { desc = "Line diagnostics", })
 
+map("n", "<leader>dt", function()
+	local filter = { bufnr = 0, }
+
+	vim.diagnostic.enable(not vim.diagnostic.is_enabled(filter), filter)
+end, { desc = "Toggle buffer diagnostics", })
+
 -- Move through wrapped lines by screen line unless a count was given.
 map("n", "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true, desc = "Down (screen line)", })
 map("n", "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true, desc = "Up (screen line)", })
