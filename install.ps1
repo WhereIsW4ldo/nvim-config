@@ -51,6 +51,8 @@ $ChocoDeps = @(
 	@{ Cmd = "dotnet";      Min = "10.0.0"; Package = "dotnet-sdk";  Probe = { dotnet --version } }
 	@{ Cmd = "cargo";       Min = $null;    Package = "rustup.install" }
 	@{ Cmd = "terraform";   Min = $null;    Package = "terraform" }
+	# opencode.nvim drives this CLI; v2 is what the plugin's main branch targets.
+	@{ Cmd = "opencode";    Min = "2.0.0";  Package = $null;         Manual = "no Chocolatey package -- see https://opencode.ai/docs for install options"; Probe = { opencode --version } }
 	# PowerShell 7+, to host `powershell_es` -- mason's package is only the editor-services
 	# DLLs, not a PowerShell runtime. Windows PowerShell 5.1 (powershell.exe) cannot run it;
 	# the Chocolatey package is `pwsh.exe` from "PowerShell Core".
@@ -78,7 +80,6 @@ $PipDeps = @(
 
 # Pinned for the same supply-chain reason as in install.sh.
 $NpmDeps = @(
-	@{ Cmd = "copilot";                     Spec = "@github/copilot@1.0.98" }
 	@{ Cmd = "prettierd";                   Spec = "@fsouza/prettierd@0.29.0" }
 	@{ Cmd = "eslint_d";                    Spec = "eslint_d@15.0.3" }
 	@{ Cmd = "markdownlint-cli2";           Spec = "markdownlint-cli2@0.23.2" }

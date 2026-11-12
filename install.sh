@@ -93,6 +93,8 @@ BREW_DEPS=(
 	# git when installed from a release tag, which is what keeps a Rust toolchain optional
 	# for it. Without them it falls back to a slower pure-Lua matcher rather than failing.
 	"curl|-|curl|"
+	# opencode.nvim drives this CLI; v2 is what the plugin's main branch targets.
+	"opencode|2.0.0|opencode|opencode --version"
 	"unzip|-|unzip|"
 	# On Linux `tar` is already GNU tar. brew's `gnu-tar` installs `gtar`, not `tar`, so
 	# as with `cc` the formula is nominal and the value is in --check reporting it.
@@ -127,8 +129,6 @@ BREW_DEPS=(
 # (see https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack), so bump
 # these consciously rather than floating on latest.
 NPM_DEPS=(
-	# Official Copilot CLI agent, opened by Sidekick in lua/plugin/ai.lua.
-	"copilot|@github/copilot@1.0.98"
 	# prettier, as a daemon, for conform.nvim -- see `lua/plugin/format.lua`. It bundles
 	# its own prettier (a dependency of the package), so this one entry covers markdown,
 	# Vue, TypeScript and the JSON/YAML/CSS files around them. `prettierd` is the binary

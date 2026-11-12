@@ -1,64 +1,68 @@
--- Copilot CLI agent integration, without inline completion or Next Edit Suggestions.
+-- opencode.nvim drives the `opencode` TUI in a snacks terminal split and sends it editor
+-- context as references (`@path:Lstart-Lend`) rather than pasted text, so the agent reads
+-- the code from disk and knows where it came from. Save before asking: it reads the file.
+-- Providers (GitHub Copilot, OpenCode Go) are configured in opencode itself via `/connect`.
+local cmd = "opencode"
+
+local win = {
+	position = "right",
+	enter    = false,
+	bo       = { buflisted = false, },
+}
+
 return {
-	"folke/sidekick.nvim",
+	"nickjvandyke/opencode.nvim",
 	dependencies = { "folke/snacks.nvim", },
-	cmd = "Sidekick",
-	opts = {
-		nes     = { enabled = false, },
-		copilot = { status = { enabled = false, }, },
-		cli     = {
-			mux = { enabled = false, },
-		},
-	},
+	init = function()
+		vim.g.opencode_opts = {
+			server = {
+				start = function()
+					require("snacks.terminal").open(cmd, { win = win, })
+				end,
+			},
+		}
+	end,
 	keys = {
 		{
 			"<leader>aa",
-			function() require("sidekick.cli").toggle({ name = "copilot", focus = true, }) end,
-			desc = "AI: toggle Copilot agent",
-		},
-		{
-			"<leader>av",
 			function()
-				require("sidekick.cli").send({
-					name   = "copilot",
-					msg    = "{selection}",
-					focus  = true,
-					submit = false,
-				})
+				require("snacks.terminal").toggle(cmd, { win = win, })
 			end,
-			mode = "x",
-			desc = "AI: send selection to Copilot",
+			mode = { "n", "t", },
+			desc = "AI: toggle OpenCode",
 		},
 		{
-			"<leader>af",
+			"<leader>ak",
 			function()
-				require("sidekick.cli").send({
-					name   = "copilot",
-					msg    = "{file}",
-					focus  = true,
-					submit = false,
-				})
-			end,
-			desc = "AI: send file to Copilot",
-		},
-		{
-			"<leader>ap",
-			function()
-				require("sidekick.cli").prompt({
-					cb = function(_, text)
-						if text then
-							require("sidekick.cli").send({
-								name   = "copilot",
-								text   = text,
-								focus  = true,
-								submit = false,
-							})
-						end
-					end,
-				})
+				require("opencode").ask("@this: ")
 			end,
 			mode = { "n", "x", },
-			desc = "AI: Copilot prompt library",
+			desc = "AI: ask OpenCode about selection/cursor",
+		},
+		{
+			"<leader>as",
+			function()
+				require("opencode").select()
+			end,
+			mode = { "n", "x", },
+			desc = "AI: OpenCode prompts and actions",
+		},
+		{
+			"<leader>ao",
+			function()
+				return require("opencode").operator("@this ")
+			end,
+			mode = { "n", "x", },
+			expr = true,
+			desc = "AI: send range to OpenCode",
+		},
+		{
+			"<leader>aO",
+			function()
+				return require("opencode").operator("@this ") .. "_"
+			end,
+			expr = true,
+			desc = "AI: send line to OpenCode",
 		},
 	},
 }

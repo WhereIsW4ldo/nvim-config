@@ -20,6 +20,7 @@ See [CLAUDE.md](CLAUDE.md) for the layout, conventions, and code style.
 | JDK **21** | Runs older Gradle wrappers and Java 21 project toolchains separately from JDT LS | `brew install openjdk@21`, or set `JAVA_HOME_21` to an existing JDK |
 | Python **3.9+** | Mason's `jdtls` launcher | `brew install python` |
 | Maven and Gradle | Build and test Java projects without checked-in wrappers | `brew install maven gradle`; prefer `./mvnw` and `./gradlew` where available |
+| `opencode` **2.0+** | `lua/plugin/ai.lua` runs it in a terminal split and sends it editor references | `brew install opencode`, or see <https://opencode.ai/docs> |
 | `curl`, `unzip`, `tar`, `gzip` | mason downloads and unpacks language servers; `curl` + `git` also fetch `blink.cmp`'s prebuilt fuzzy matcher | Linux uses these Unix tools; Windows uses PowerShell, Git, GNU tar, and 7-Zip-compatible extraction (covered by `install.ps1`) |
 
 ## Documentation popups
@@ -603,57 +604,26 @@ here, so it is deliberately not listed.
 To opt out of trash entirely and take the permanent delete on purpose, set
 `explorer = { enabled = true, trash = false, }` in `lua/plugin/explorer.lua`.
 
-### `copilot` — required by `lua/plugin/ai.lua`
+### `opencode` — the AI agent
 
-[Sidekick](https://github.com/folke/sidekick.nvim) opens the official
-[GitHub Copilot CLI](https://github.com/github/copilot-cli) agent inside Neovim.
-The CLI is an external dependency, not something lazy.nvim installs:
+`lua/plugin/ai.lua` uses [opencode.nvim](https://github.com/nickjvandyke/opencode.nvim) to
+run the `opencode` TUI in a right-hand terminal split. Selections, the cursor position and
+buffers are sent as file references (path plus line range), not pasted text, so the agent
+reads the code from disk and knows where it came from. **Save before asking.**
 
-```sh
-npm install -g @github/copilot@1.0.98
-```
-
-Both installers record that version for fresh installs and leave an existing `copilot`
-on `PATH` alone. Node 22+ is already covered by the dependency tables. No Copilot language
-server, inline-completion plugin, or terminal multiplexer is required for this setup.
-
-## Copilot agent
-
-`lua/plugin/ai.lua` configures Sidekick for the **Copilot CLI agent only**. Inline
-completion and Next Edit Suggestions are not enabled; blink.cmp and Tab/snippet navigation
-are unchanged. Sidekick is not listed in awesome-neovim; it was chosen explicitly for its
-selection-to-CLI context workflow instead of the inline-only `copilot.vim`/`copilot.lua`
-or CodeCompanion's native chat interface.
-
-Open Neovim in the project directory, then press `<leader>aa`. Complete the CLI's login
-flow if prompted (or use `/login`); your GitHub account needs Copilot access permitted by
-your plan and organization policy. This is separate from Copilot language-server login.
+Providers live in opencode, not in Neovim. Run `opencode`, then `/connect` once to sign in
+to GitHub Copilot and/or OpenCode Go, and pick a model with `/models`.
 
 | Key | Mode | Action |
 |---|---|---|
-| `<leader>aa` | Normal | Toggle/focus the Copilot agent in a right-hand split |
-| `<leader>av` | Visual | Send the selected code as context and focus the agent |
-| `<leader>af` | Normal | Send the current file reference and focus the agent |
-| `<leader>ap` | Normal / Visual | Choose a prompt such as explain, fix, review, or tests |
+| `<leader>aa` | Normal / Terminal | Toggle the OpenCode split (starts it if needed) |
+| `<leader>ak` | Normal / Visual | Ask, prefilled with `@this: ` (selection, else cursor) |
+| `<leader>as` | Normal / Visual | Pick a built-in prompt (explain, review, fix, test...) or command |
+| `<leader>ao{motion}` | Normal / Visual | Send a range as a reference |
+| `<leader>aO` | Normal | Send the current line as a reference |
 
-Select code with `v` or `V`, press `<leader>av`, then add an instruction such as
-"Refactor this without changing its behavior" in the agent prompt. Context and library
-prompts are **inserted, not submitted**: review them and press Enter yourself. The file
-mapping sends a reference to the file on disk; save first if you want the agent to read
-your latest edits. Selection context includes the selected buffer text.
-
-Inside the agent, `<C-.>` hides the terminal and `<C-z>` returns focus to the code.
-`<C-h>` also moves left out of the right-hand split. Hiding the window keeps the session
-running while Neovim is open; sessions are not kept alive after Neovim exits because
-tmux/zellij integration is disabled. Sidekick watches for files changed by the agent.
-
-Code context is sent to Copilot when you submit the prompt. The agent can edit files and
-run commands subject to its normal permission prompts; this config does not enable
-automatic approval. Use `:checkhealth sidekick` to diagnose the integration. Copilot LSP
-and other AI tools are intentionally not installed, so their health entries are not
-requirements for this CLI-only setup. In particular, upstream still reports
-`No Copilot LSP server is enabled` as an error even with NES disabled; that entry does
-not block the CLI agent.
+In an ask prompt, `@this`, `@buffer`, `@buffers`, `@diagnostics`, `@visible`, `@quickfix`
+and `@marks` expand to references. Run `:checkhealth opencode` to verify the setup.
 
 ## Debugging
 
