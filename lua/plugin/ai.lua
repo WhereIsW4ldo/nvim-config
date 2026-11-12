@@ -28,7 +28,9 @@ return {
 			function()
 				require("snacks.terminal").toggle(cmd, { win = win, })
 			end,
-			mode = { "n", "t", },
+			-- A terminal-mode leader mapping buffers every typed Space until `timeoutlen`.
+			-- Leave terminal mode with <C-\><C-n> before using this shortcut instead.
+			mode = "n",
 			desc = "AI: toggle OpenCode",
 		},
 		{

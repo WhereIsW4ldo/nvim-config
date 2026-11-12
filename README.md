@@ -616,11 +616,15 @@ to GitHub Copilot and/or OpenCode Go, and pick a model with `/models`.
 
 | Key | Mode | Action |
 |---|---|---|
-| `<leader>aa` | Normal / Terminal | Toggle the OpenCode split (starts it if needed) |
+| `<leader>aa` | Normal | Toggle the OpenCode split (starts it if needed) |
 | `<leader>ak` | Normal / Visual | Ask, prefilled with `@this: ` (selection, else cursor) |
 | `<leader>as` | Normal / Visual | Pick a built-in prompt (explain, review, fix, test...) or command |
 | `<leader>ao{motion}` | Normal / Visual | Send a range as a reference |
 | `<leader>aO` | Normal | Send the current line as a reference |
+
+From inside the split, press `<C-\><C-n>` to leave terminal mode, then `<leader>aa` to
+hide it. Space is deliberately not a terminal-mode mapping prefix, so typing in OpenCode
+or a shell does not wait for a leader shortcut.
 
 In an ask prompt, `@this`, `@buffer`, `@buffers`, `@diagnostics`, `@visible`, `@quickfix`
 and `@marks` expand to references. Run `:checkhealth opencode` to verify the setup.
