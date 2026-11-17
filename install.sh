@@ -85,9 +85,10 @@ BREW_DEPS=(
 	# here. The file finder degrades (fd -> rg -> find), but grep does not: `rg` is
 	# hardcoded in snacks' grep source with no fallback, so without this the explorer
 	# opens fine and one of its actions silently returns nothing.
-	# 12.0.0 is where `--max-columns-preview` landed, which snacks passes unconditionally.
+	# grug-far's project-wide search/replace requires ripgrep >= 14 (15 recommended).
+	# This also covers snacks' `--max-columns-preview` flag, introduced in 12.0.0.
 	# `--version` prints `ripgrep 14.1.0` on the first line, hence field 2.
-	"rg|12.0.0|ripgrep|rg --version | head -1 | awk '{print \$2}'"
+	"rg|14.0.0|ripgrep|rg --version | head -1 | awk '{print \$2}'"
 	# mason shells out to these four to download and unpack language servers. `curl` earns
 	# its place twice: blink.cmp downloads its prebuilt Rust fuzzy matcher with curl and
 	# git when installed from a release tag, which is what keeps a Rust toolchain optional

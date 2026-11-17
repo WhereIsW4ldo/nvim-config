@@ -45,6 +45,38 @@ are unchanged. Inline diagnostics and the existing buffer/workspace diagnostic
 pickers remain enabled. Diagnostic messages are plain text, not Markdown.
 No additional plugin or external tool is needed.
 
+## Project-wide find and replace
+
+[grug-far.nvim](https://github.com/MagicDuck/grug-far.nvim), configured in
+`lua/plugin/search.lua`, opens a split with Search, Replace, Files Filter, Flags and
+Paths fields. Results update as you type; entering a replacement shows a diff before
+anything is applied.
+
+- **`<leader>fp`** (Space, f, p): open find/replace for the current file's Git root,
+  falling back to the working directory outside a Git checkout. In visual mode it
+  also prefills Search from the selection. The scope is visible in Paths; no `:cd`
+  is performed. `:GrugFar` is also available, scoped to the working directory.
+- **`Tab` / `Shift-Tab`** in normal mode: move between input fields.
+- **`\r`** in normal mode: replace **all** matches in scope.
+- **`\l`**: sync the current result line; **`\s`**: sync the result list. To exclude
+  matches/files, delete their result lines and use **`\s`, not `\r`**: Replace All
+  ignores edits to the result list. Sync is unavailable for multiline replacement.
+- **`Enter`** on a result: jump to the source; **`g?`**: help; **`\c`**: close.
+
+The backslash is this config's `<localleader>`, not Space. Leave insert mode with
+Escape before using these actions. Search uses ripgrep regex by default: add
+`--fixed-strings` to Flags for literal text, `--ignore-case` for case-insensitive
+matching, or `--word-regexp` for whole words. Files Filter accepts globs such as
+`*.lua` and `!lazy-lock.json`, one per line. Hidden and gitignored files are skipped
+by default, but positive globs can override both rules; add explicit exclusions
+when needed (`!.*` excludes hidden files).
+Use `--hidden` or `--no-ignore` deliberately, and keep `.git` excluded
+with `--glob=!.git` when widening the scope.
+
+Replacement writes files to disk. Commit or back up your work before bulk changes;
+do not assume ordinary buffer undo is a project-wide rollback. The optional
+ast-grep engines are disabled, so only the existing ripgrep dependency is required.
+
 ## External dependencies
 
 Plugins that need something installed outside Neovim. lazy.nvim will **not** install
@@ -572,10 +604,12 @@ The distro package is lighter: Homebrew's `wl-clipboard` pulls in its own `wayla
 `wayland-protocols`, whereas the distro one reuses system libraries. `install.sh` uses
 brew only to keep itself to a single package manager.
 
-### `ripgrep` — required by `lua/plugin/picker.lua` and `lua/plugin/explorer.lua`
+### `ripgrep` — required by the picker, explorer and project-wide find/replace
 
 `snacks.picker` shells out for anything it does not read off the filesystem itself, and
 `snacks.explorer` is one of its sources.
+`lua/plugin/search.lua` uses ripgrep for grug-far's search and replacement previews
+and for applying changes. **Version 14+ is required; 15+ is recommended upstream.**
 
 ```sh
 brew install ripgrep               # or: sudo apt install ripgrep

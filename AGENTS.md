@@ -2,6 +2,19 @@
 
 Guidance for Claude Code (claude.ai/code) when working in this repository.
 
+## Task observation
+
+At the start of any task-oriented session — any interaction where you will use
+tools and produce deliverables — invoke the `task-observer` skill before beginning
+work. Keep it active throughout execution and follow-up discussion so skill
+improvement opportunities are captured as they arise.
+
+When loading any skill, check `skill-observations/log.md` for OPEN observations
+tagged to that skill, and read `cross-cutting-principles.md`. Apply relevant insights
+to the current work even if the skill has not yet been updated. This does not
+authorize editing skills or acting on the review backlog without user approval;
+follow the `task-observer` skill's review and approval rules.
+
 ## What this is
 
 A personal Neovim configuration, written entirely in Lua, living at `~/.config/nvim`.

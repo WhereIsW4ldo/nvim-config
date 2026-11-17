@@ -50,3 +50,25 @@ rather than substituting a different activity field.
 
 **Principle:** Threshold decisions must use the exact metric specified by the policy,
 not a similarly named timestamp or an inferred proxy.
+
+### Observation 3: Verify version requirements before presenting compatibility
+
+**Status:** OPEN
+**Date:** 2026-11-17
+**Session context:** Comparing project-wide find-and-replace plugins.
+**Skill:** add-nvim-plugin
+**Type:** open-source
+**Phase/Area:** Feature research and dependency verification
+
+**Issue:** A candidate's README required ripgrep without naming a minimum version.
+The comparison initially stated that the installed ripgrep 14 met its requirements.
+A subsequent source check found a runtime guard requiring version 15, so that
+compatibility claim needed correcting after the user had already chosen an option.
+
+**Suggested improvement:** Before step 4 presents compatibility or dependency costs,
+check runtime version guards or health checks when the README omits a version floor.
+Mark compatibility unconfirmed until those checks finish rather than publishing an
+early assumption while deeper delegated research is still running.
+
+**Principle:** Documentation omissions do not establish compatibility; finish checking
+enforced constraints before presenting a decision that depends on them.
